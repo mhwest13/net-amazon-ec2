@@ -68,6 +68,7 @@ use Net::Amazon::EC2::InstanceStatus;
 use Net::Amazon::EC2::InstanceStatuses;
 use Net::Amazon::EC2::SystemStatus;
 use Net::Amazon::EC2::NetworkInterfaceSet;
+use Net::Amazon::EC2::ClassicLinkReservationInfo;
 
 $VERSION = '0.30';
 
@@ -80,7 +81,7 @@ environment.
 
 This is Net::Amazon::EC2 version 0.30
 
-EC2 Query API version: '2014-06-15'
+EC2 Query API version: '2014-10-01'
 
 =head1 SYNOPSIS
 
@@ -207,7 +208,7 @@ has 'SecurityToken'	=> ( is => 'ro',
 );
 has 'debug'				=> ( is => 'ro', isa => 'Str', required => 0, default => 0 );
 has 'signature_version'	=> ( is => 'ro', isa => 'Int', required => 1, default => 2 );
-has 'version'			=> ( is => 'ro', isa => 'Str', required => 1, default => '2014-06-15' );
+has 'version'			=> ( is => 'ro', isa => 'Str', required => 1, default => '2014-10-01' );
 has 'region'			=> ( is => 'ro', isa => 'Str', required => 1, default => 'us-east-1' );
 has 'ssl'				=> ( is => 'ro', isa => 'Bool', required => 1, default => 1 );
 has 'return_errors'     => ( is => 'ro', isa => 'Bool', default => 0 );
@@ -2097,6 +2098,84 @@ sub describe_instances {
 	}
 
 	return $reservations;
+}
+
+=head2 describe_classic_link_instances(%params)
+
+This method pulls a list of the instances which are running or were just running and are EC2-Classic instances.  The list can be modified by passing in some of the following parameters:
+
+=over
+
+=item InstanceId (optional)
+
+Either a scalar or an array ref can be passed in, will cause just these instances to be 'described'
+
+=item Filter (optional)
+
+The filters for only the matching instances to be 'described'.
+A filter tuple is an arrayref constsing one key and one or more values.
+The option takes one filter tuple, or an arrayref of multiple filter tuples.
+
+=back
+
+Returns an array ref of Net::Amazon::EC2::ReservationInfo objects
+
+=cut
+
+sub describe_classic_link_instances {
+	my $self = shift;
+	my %args = validate( @_, {
+		InstanceId	=> { type => SCALAR | ARRAYREF, optional => 1 },
+		Filter		=> { type => ARRAYREF, optional => 1 },
+	});
+	
+	# If we have a array ref of instances lets split them out into their InstanceId.n format
+	if (ref ($args{InstanceId}) eq 'ARRAY') {
+		my $instance_ids	= delete $args{InstanceId};
+		my $count			= 1;
+		foreach my $instance_id (@{$instance_ids}) {
+			$args{"InstanceId." . $count} = $instance_id;
+			$count++;
+		}
+	}
+
+	$self->_build_filters(\%args);
+	my $xml = $self->_sign(Action  => 'DescribeClassicLinkInstances', %args);
+	my $reservations;
+	
+	if ( grep { defined && length } $xml->{Errors} ) {
+		return $self->_parse_errors($xml);
+	}
+	else {
+        foreach my $instance_elem ( @{$xml->{instancesSet}->{item}} ) {
+            my ($tag_sets, $group_sets) = [];
+            foreach my $tag_arr (@{$instance_elem->{tagSet}{item}}) {
+                if ( ref $tag_arr->{value} eq "HASH" ) {
+                    $tag_arr->{value} = "";
+                }
+                my $tag = Net::Amazon::EC2::TagSet->new(
+                    key => $tag_arr->{key},
+                    value => $tag_arr->{value},
+                );
+                push @$tag_sets, $tag;
+            }
+            foreach my $group_arr (@{$instance_elem->{groupSet}{item}}) {
+                my $group = Net::Amazon::EC2::GroupSet->new(
+                    group_id => $group_arr->{groupId},
+                );
+                push @$group_sets, $group;
+            }
+
+            my $reservation = Net::Amazon::EC2::ClassicLinkReservationInfo->new(
+                reservation_id => $instance_elem->{instanceId},
+                vpc_id         => $instance_elem->{vpcId},
+                group_set      => $group_sets,
+                tag_set        => $tag_sets
+            );
+            push @$reservations, $reservation;
+        }
+	}
+    return $reservations;
 }
 
 =head2 describe_instance_status(%params)
