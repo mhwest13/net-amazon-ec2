@@ -34,10 +34,10 @@ The EBS volume id.
 
 =cut
 
-has 'attach_time'			=> ( is => 'ro', isa => 'Str', required => 1 );
-has 'delete_on_termination'	=> ( is => 'ro', isa => 'Str', required => 1 );
-has 'status'				=> ( is => 'ro', isa => 'Str', required => 1 );
-has 'volume_id'				=> ( is => 'ro', isa => 'Str', required => 1 );
+has 'attach_time'           => ( is => 'ro', isa => 'Str', required => 1 );
+has 'delete_on_termination' => ( is => 'ro', isa => 'Str', required => 1 );
+has 'status'                => ( is => 'ro', isa => 'Str', required => 1 );
+has 'volume_id'             => ( is => 'ro', isa => 'Str', required => 1 );
 
 __PACKAGE__->meta->make_immutable();
 

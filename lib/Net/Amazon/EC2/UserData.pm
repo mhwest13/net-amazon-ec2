@@ -20,7 +20,7 @@ User data itself which is passed to the instance.
 
 =cut
 
-has 'data'	=> ( is => 'ro', isa => 'Str', required => 1 );
+has 'data' => ( is => 'ro', isa => 'Str', required => 1 );
 
 __PACKAGE__->meta->make_immutable();
 

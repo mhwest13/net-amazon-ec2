@@ -55,8 +55,8 @@ The current named state of the instance. Valid values are:
 
 =cut
 
-has 'code'  => ( is => 'ro', isa => 'Int' );
-has 'name'  => ( is => 'ro', isa => 'Str' );
+has 'code' => ( is => 'ro', isa => 'Int' );
+has 'name' => ( is => 'ro', isa => 'Str' );
 
 __PACKAGE__->meta->make_immutable();
 

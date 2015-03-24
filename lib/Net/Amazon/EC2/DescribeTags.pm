@@ -37,10 +37,10 @@ The value of the tag.
 
 =cut
 
-has 'resource_id'		=> ( is => 'ro', isa => 'Maybe[Str]', required => 1 );
-has 'resource_type'		=> ( is => 'ro', isa => 'Maybe[Str]', required => 1 );
-has 'key'				=> ( is => 'ro', isa => 'Maybe[Str]', required => 1 );
-has 'value'				=> ( is => 'ro', isa => 'Maybe[Str]', required => 1 );
+has 'resource_id'   => ( is => 'ro', isa => 'Maybe[Str]', required => 1 );
+has 'resource_type' => ( is => 'ro', isa => 'Maybe[Str]', required => 1 );
+has 'key'           => ( is => 'ro', isa => 'Maybe[Str]', required => 1 );
+has 'value'         => ( is => 'ro', isa => 'Maybe[Str]', required => 1 );
 
 __PACKAGE__->meta->make_immutable();
 

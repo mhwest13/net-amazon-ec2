@@ -25,8 +25,12 @@ An arrayref of Net::Amazon::EC2::CreateVolumePermission objects
 
 =cut
 
-has 'snapshot_id'	=> ( is => 'ro', isa => 'Str', required => 1 );
-has 'permissions'	=> ( is => 'ro', isa => 'Maybe[ArrayRef[Net::Amazon::EC2::CreateVolumePermission]]', required => 0 );
+has 'snapshot_id' => ( is => 'ro', isa => 'Str', required => 1 );
+has 'permissions' => (
+    is       => 'ro',
+    isa      => 'Maybe[ArrayRef[Net::Amazon::EC2::CreateVolumePermission]]',
+    required => 0
+);
 
 __PACKAGE__->meta->make_immutable();
 

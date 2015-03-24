@@ -26,8 +26,8 @@ The AWS account id of the user with launch permissions.
 
 =cut
 
-has 'group'         => ( is => 'ro', isa => 'Str' );
-has 'user_id'       => ( is => 'ro', isa => 'Str' );
+has 'group'   => ( is => 'ro', isa => 'Str' );
+has 'user_id' => ( is => 'ro', isa => 'Str' );
 
 __PACKAGE__->meta->make_immutable();
 

@@ -56,15 +56,21 @@ Any tags assigned to the resource, each one wrapped in an item element.
 
 =cut
 
-has 'subnet_id'                   => ( is => 'ro', isa => 'Maybe[Str]', required => 1 );
-has 'state'                       => ( is => 'ro', isa => 'Maybe[Str]', required => 1 );
-has 'vpc_id'		                  => ( is => 'ro', isa => 'Maybe[Str]', required => 1 );
-has 'cidr_block'		              => ( is => 'ro', isa => 'Maybe[Str]', required => 1 );
-has 'available_ip_address_count'  => ( is => 'ro', isa => 'Maybe[Str]', required => 1 );
-has 'availability_zone'           => ( is => 'ro', isa => 'Maybe[Str]', required => 1 );
-has 'default_for_az'              => ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
-has 'map_public_ip_on_launch'     => ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
-has 'tag_set'                     => ( is => 'ro', isa => 'Maybe[ArrayRef[Net::Amazon::EC2::TagSet]]', required => 0 );
+has 'subnet_id'  => ( is => 'ro', isa => 'Maybe[Str]', required => 1 );
+has 'state'      => ( is => 'ro', isa => 'Maybe[Str]', required => 1 );
+has 'vpc_id'     => ( is => 'ro', isa => 'Maybe[Str]', required => 1 );
+has 'cidr_block' => ( is => 'ro', isa => 'Maybe[Str]', required => 1 );
+has 'available_ip_address_count' =>
+  ( is => 'ro', isa => 'Maybe[Str]', required => 1 );
+has 'availability_zone' => ( is => 'ro', isa => 'Maybe[Str]', required => 1 );
+has 'default_for_az'    => ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
+has 'map_public_ip_on_launch' =>
+  ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
+has 'tag_set' => (
+    is       => 'ro',
+    isa      => 'Maybe[ArrayRef[Net::Amazon::EC2::TagSet]]',
+    required => 0
+);
 __PACKAGE__->meta->make_immutable();
 
 =head1 AUTHOR

@@ -30,8 +30,8 @@ The password of the instance.
 =cut
 
 has 'instance_id'   => ( is => 'ro', isa => 'Str', required => 1 );
-has 'timestamp'		=> ( is => 'ro', isa => 'Str', required => 1 );
-has 'password_data'	=> ( is => 'ro', isa => 'Str', required => 1 );
+has 'timestamp'     => ( is => 'ro', isa => 'Str', required => 1 );
+has 'password_data' => ( is => 'ro', isa => 'Str', required => 1 );
 
 __PACKAGE__->meta->make_immutable();
 

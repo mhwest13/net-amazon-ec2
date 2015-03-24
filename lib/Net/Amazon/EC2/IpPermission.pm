@@ -46,22 +46,22 @@ or both can be specified as -1, which is a wildcard.
 
 =cut
 
-has 'ip_protocol'   => ( is => 'ro', isa => 'Str', required => 1 );
-has 'from_port'     => ( is => 'ro', isa => 'Maybe[Int]', required => 1 );
-has 'to_port'       => ( is => 'ro', isa => 'Maybe[Int]', required => 1 );
-has 'ip_ranges'     => ( 
-    is          => 'rw', 
-    isa         => 'ArrayRef[Net::Amazon::EC2::IpRange]',
-    predicate   => 'has_ip_ranges',
-    required    => 0,
+has 'ip_protocol' => ( is => 'ro', isa => 'Str',        required => 1 );
+has 'from_port'   => ( is => 'ro', isa => 'Maybe[Int]', required => 1 );
+has 'to_port'     => ( is => 'ro', isa => 'Maybe[Int]', required => 1 );
+has 'ip_ranges'   => (
+    is        => 'rw',
+    isa       => 'ArrayRef[Net::Amazon::EC2::IpRange]',
+    predicate => 'has_ip_ranges',
+    required  => 0,
 );
-has 'groups'        => ( 
-    is          => 'rw', 
-    isa         => 'ArrayRef[Net::Amazon::EC2::UserIdGroupPair]',
-    predicate   => 'has_groups',
-    required    => 0,
+has 'groups' => (
+    is        => 'rw',
+    isa       => 'ArrayRef[Net::Amazon::EC2::UserIdGroupPair]',
+    predicate => 'has_groups',
+    required  => 0,
 );
-has 'icmp_port'		=> ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
+has 'icmp_port' => ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
 
 __PACKAGE__->meta->make_immutable();
 

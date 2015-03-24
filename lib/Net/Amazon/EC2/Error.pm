@@ -25,12 +25,12 @@ The long form message about the error.
 
 use overload '""' => 'as_string';
 
-has 'code'      => ( is => 'ro', isa => 'Str', required => 1 );
-has 'message'   => ( is => 'ro', isa => 'Str', required => 1 );
+has 'code'    => ( is => 'ro', isa => 'Str', required => 1 );
+has 'message' => ( is => 'ro', isa => 'Str', required => 1 );
 
 sub as_string {
-  my $self = shift;
-  return '['.$self->code.'] '.$self->message;
+    my $self = shift;
+    return '[' . $self->code . '] ' . $self->message;
 }
 
 __PACKAGE__->meta->make_immutable();

@@ -28,9 +28,9 @@ AWS Account id of the instance owner.
 
 =cut
 
-has 'product_code'	=> ( is => 'ro', isa => 'Str', required => 1 );
-has 'instance_id'	=> ( is => 'ro', isa => 'Str', required => 1 );
-has 'owner_id'		=> ( is => 'ro', isa => 'Str', required => 1 );
+has 'product_code' => ( is => 'ro', isa => 'Str', required => 1 );
+has 'instance_id'  => ( is => 'ro', isa => 'Str', required => 1 );
+has 'owner_id'     => ( is => 'ro', isa => 'Str', required => 1 );
 
 __PACKAGE__->meta->make_immutable();
 

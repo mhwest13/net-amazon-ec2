@@ -26,8 +26,10 @@ An Net::Amazon::EC2::LaunchPermission object to remove permissions for.
 
 =cut
 
-has 'add'			=> ( is => 'ro', isa => 'Net::Amazon::EC2::LaunchPermission', required => 0 );
-has 'remove'		=> ( is => 'ro', isa => 'Net::Amazon::EC2::LaunchPermission', required => 0 );
+has 'add' =>
+  ( is => 'ro', isa => 'Net::Amazon::EC2::LaunchPermission', required => 0 );
+has 'remove' =>
+  ( is => 'ro', isa => 'Net::Amazon::EC2::LaunchPermission', required => 0 );
 
 __PACKAGE__->meta->make_immutable();
 

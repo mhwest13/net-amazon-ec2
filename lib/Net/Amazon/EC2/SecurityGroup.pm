@@ -51,20 +51,24 @@ has 'owner_id'          => ( is => 'ro', isa => 'Str', required => 1 );
 has 'group_name'        => ( is => 'ro', isa => 'Str', required => 1 );
 has 'group_id'          => ( is => 'ro', isa => 'Str', required => 1 );
 has 'group_description' => ( is => 'ro', isa => 'Str', required => 1 );
-has 'ip_permissions'    => ( 
-    is          => 'ro', 
-    isa         => 'Maybe[ArrayRef[Net::Amazon::EC2::IpPermission]]',
-    predicate   => 'has_ip_permissions',
-    default		=> sub { [ ] },
+has 'ip_permissions'    => (
+    is        => 'ro',
+    isa       => 'Maybe[ArrayRef[Net::Amazon::EC2::IpPermission]]',
+    predicate => 'has_ip_permissions',
+    default   => sub { [] },
 );
-has 'ip_permissions_egress' => ( 
-    is          => 'ro', 
-    isa         => 'Maybe[ArrayRef[Net::Amazon::EC2::IpPermission]]',
-    predicate   => 'has_ip_permissions_egress',
-    default		=> sub { [ ] },
+has 'ip_permissions_egress' => (
+    is        => 'ro',
+    isa       => 'Maybe[ArrayRef[Net::Amazon::EC2::IpPermission]]',
+    predicate => 'has_ip_permissions_egress',
+    default   => sub { [] },
 );
-has 'vpc_id'           => ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
-has 'tag_set'          => ( is => 'ro', isa => 'Maybe[ArrayRef[Net::Amazon::EC2::TagSet]]', required => 0 );
+has 'vpc_id' => ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
+has 'tag_set' => (
+    is       => 'ro',
+    isa      => 'Maybe[ArrayRef[Net::Amazon::EC2::TagSet]]',
+    required => 0
+);
 
 __PACKAGE__->meta->make_immutable();
 

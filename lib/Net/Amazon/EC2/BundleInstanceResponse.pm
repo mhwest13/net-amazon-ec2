@@ -69,19 +69,20 @@ Error message associated with bundle failure.
 
 =cut
 
-has 'instance_id'					=> ( is => 'ro', isa => 'Str', required => 1 );
-has 'bundle_id'						=> ( is => 'ro', isa => 'Str', required => 1 );
-has 'state'							=> ( is => 'ro', isa => 'Str', required => 1 );
-has 'start_time'					=> ( is => 'ro', isa => 'Str', required => 1 );
-has 'update_time'					=> ( is => 'ro', isa => 'Str', required => 1 );
-has 'progress'						=> ( is => 'ro', isa => 'Str', required => 1 );
-has 's3_bucket'						=> ( is => 'ro', isa => 'Str', required => 1 );
-has 's3_prefix'						=> ( is => 'ro', isa => 'Str', required => 1 );
-has 's3_aws_access_key_id'			=> ( is => 'ro', isa => 'Str', required => 1 );
-has 's3_upload_policy'				=> ( is => 'ro', isa => 'Str', required => 1 );
-has 's3_policy_upload_signature'	=> ( is => 'ro', isa => 'Str', required => 1 );
-has 'bundle_error_code'				=> ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
-has 'bundle_error_message'			=> ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
+has 'instance_id'                => ( is => 'ro', isa => 'Str', required => 1 );
+has 'bundle_id'                  => ( is => 'ro', isa => 'Str', required => 1 );
+has 'state'                      => ( is => 'ro', isa => 'Str', required => 1 );
+has 'start_time'                 => ( is => 'ro', isa => 'Str', required => 1 );
+has 'update_time'                => ( is => 'ro', isa => 'Str', required => 1 );
+has 'progress'                   => ( is => 'ro', isa => 'Str', required => 1 );
+has 's3_bucket'                  => ( is => 'ro', isa => 'Str', required => 1 );
+has 's3_prefix'                  => ( is => 'ro', isa => 'Str', required => 1 );
+has 's3_aws_access_key_id'       => ( is => 'ro', isa => 'Str', required => 1 );
+has 's3_upload_policy'           => ( is => 'ro', isa => 'Str', required => 1 );
+has 's3_policy_upload_signature' => ( is => 'ro', isa => 'Str', required => 1 );
+has 'bundle_error_code' => ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
+has 'bundle_error_message' =>
+  ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
 
 __PACKAGE__->meta->make_immutable();
 

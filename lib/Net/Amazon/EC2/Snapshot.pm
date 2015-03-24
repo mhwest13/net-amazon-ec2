@@ -53,16 +53,20 @@ The AWS account alias (e.g., "amazon", "redhat", "self", etc.) or AWS account ID
 
 =cut
 
-has 'snapshot_id'	=> ( is => 'ro', isa => 'Str', required => 1 );
-has 'status'		=> ( is => 'ro', isa => 'Str', required => 1 );
-has 'volume_id'		=> ( is => 'ro', isa => 'Str', required => 1 );
-has 'start_time'	=> ( is => 'ro', isa => 'Str', required => 1 );
-has 'progress'		=> ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
-has 'owner_id'		=> ( is => 'ro', isa => 'Str', required => 1 );
-has 'volume_size'	=> ( is => 'ro', isa => 'Str', required => 1 );
-has 'description'	=> ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
-has 'owner_alias'	=> ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
-has 'tag_set'		=> ( is => 'ro', isa => 'Maybe[ArrayRef[Net::Amazon::EC2::TagSet]]', required => 0 );
+has 'snapshot_id' => ( is => 'ro', isa => 'Str',        required => 1 );
+has 'status'      => ( is => 'ro', isa => 'Str',        required => 1 );
+has 'volume_id'   => ( is => 'ro', isa => 'Str',        required => 1 );
+has 'start_time'  => ( is => 'ro', isa => 'Str',        required => 1 );
+has 'progress'    => ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
+has 'owner_id'    => ( is => 'ro', isa => 'Str',        required => 1 );
+has 'volume_size' => ( is => 'ro', isa => 'Str',        required => 1 );
+has 'description' => ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
+has 'owner_alias' => ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
+has 'tag_set'     => (
+    is       => 'ro',
+    isa      => 'Maybe[ArrayRef[Net::Amazon::EC2::TagSet]]',
+    required => 0
+);
 
 __PACKAGE__->meta->make_immutable();
 

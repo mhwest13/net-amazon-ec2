@@ -58,17 +58,25 @@ The associated tags (key:value) of the specified volume.
 
 =cut
 
-has 'volume_id'		=> ( is => 'ro', isa => 'Str', required => 1 );
-has 'size'			=> ( is => 'ro', isa => 'Str', required => 1 );
-has 'snapshot_id'	=> ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
-has 'zone'			=> ( is => 'ro', isa => 'Str', required => 1 );
-has 'status'		=> ( is => 'ro', isa => 'Str', required => 1 );
-has 'create_time'	=> ( is => 'ro', isa => 'Str', required => 1 );
-has 'volume_type'       => ( is => 'ro', isa => 'Str', default => 'standard');
-has 'iops'              => ( is => 'ro', isa => 'Maybe[Int]');
-has 'encrypted'         => ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
-has 'attachments'	=> ( is => 'ro', isa => 'Maybe[ArrayRef[Net::Amazon::EC2::Attachment]]', required => 0 );
-has 'tag_set'              => ( is => 'ro', isa => 'Maybe[ArrayRef[Net::Amazon::EC2::TagSet]]', required => 0 );
+has 'volume_id'   => ( is => 'ro', isa => 'Str',        required => 1 );
+has 'size'        => ( is => 'ro', isa => 'Str',        required => 1 );
+has 'snapshot_id' => ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
+has 'zone'        => ( is => 'ro', isa => 'Str',        required => 1 );
+has 'status'      => ( is => 'ro', isa => 'Str',        required => 1 );
+has 'create_time' => ( is => 'ro', isa => 'Str',        required => 1 );
+has 'volume_type' => ( is => 'ro', isa => 'Str', default => 'standard' );
+has 'iops' => ( is => 'ro', isa => 'Maybe[Int]' );
+has 'encrypted' => ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
+has 'attachments' => (
+    is       => 'ro',
+    isa      => 'Maybe[ArrayRef[Net::Amazon::EC2::Attachment]]',
+    required => 0
+);
+has 'tag_set' => (
+    is       => 'ro',
+    isa      => 'Maybe[ArrayRef[Net::Amazon::EC2::TagSet]]',
+    required => 0
+);
 
 __PACKAGE__->meta->make_immutable();
 

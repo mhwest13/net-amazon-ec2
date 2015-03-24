@@ -35,21 +35,21 @@ ID of the requester.
 
 =cut
 
-has 'reservation_id'	=> ( is => 'ro', isa => 'Str', required => 1 );
-has 'owner_id'			=> ( is => 'ro', isa => 'Str', required => 1 );
-has 'group_set'			=> ( 
-    is			=> 'ro', 
-    isa			=> 'ArrayRef[Net::Amazon::EC2::GroupSet]',
-    required	=> 1,
-    auto_deref	=> 1,
+has 'reservation_id' => ( is => 'ro', isa => 'Str', required => 1 );
+has 'owner_id'       => ( is => 'ro', isa => 'Str', required => 1 );
+has 'group_set'      => (
+    is         => 'ro',
+    isa        => 'ArrayRef[Net::Amazon::EC2::GroupSet]',
+    required   => 1,
+    auto_deref => 1,
 );
-has 'instances_set'		=> ( 
-    is			=> 'ro',
-    isa			=> 'ArrayRef[Net::Amazon::EC2::RunningInstances]',
-    required	=> 1,
-    auto_deref	=> 1,
+has 'instances_set' => (
+    is         => 'ro',
+    isa        => 'ArrayRef[Net::Amazon::EC2::RunningInstances]',
+    required   => 1,
+    auto_deref => 1,
 );
-has 'requester_id'		=> ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
+has 'requester_id' => ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
 
 __PACKAGE__->meta->make_immutable();
 

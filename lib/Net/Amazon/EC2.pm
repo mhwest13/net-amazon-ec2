@@ -169,162 +169,182 @@ If you want/need the old behavior, set this attribute to a true value.
 
 =cut
 
-has 'AWSAccessKeyId'	=> ( is => 'ro',
-			     isa => 'Str',
-			     required => 1,
-			     lazy => 1,
-			     default => sub {
-				 if (defined($_[0]->temp_creds)) {
-				     return $_[0]->temp_creds->{'AccessKeyId'};
-				 } else {
-				     return undef;
-				 }
-			     }
+has 'AWSAccessKeyId' => (
+    is       => 'ro',
+    isa      => 'Str',
+    required => 1,
+    lazy     => 1,
+    default  => sub {
+        if ( defined( $_[0]->temp_creds ) ) {
+            return $_[0]->temp_creds->{'AccessKeyId'};
+        }
+        else {
+            return undef;
+        }
+    }
 );
-has 'SecretAccessKey'	=> ( is => 'ro',
-			     isa => 'Str',
-			     required => 1,
-			     lazy => 1,
-			     default => sub {
-				 if (defined($_[0]->temp_creds)) {
-				     return $_[0]->temp_creds->{'SecretAccessKey'};
-				 } else {
-				     return undef;
-				 }
-			     }
+has 'SecretAccessKey' => (
+    is       => 'ro',
+    isa      => 'Str',
+    required => 1,
+    lazy     => 1,
+    default  => sub {
+        if ( defined( $_[0]->temp_creds ) ) {
+            return $_[0]->temp_creds->{'SecretAccessKey'};
+        }
+        else {
+            return undef;
+        }
+    }
 );
-has 'SecurityToken'	=> ( is => 'ro',
-			     isa => 'Str',
-			     required => 0,
-			     lazy => 1,
-			     predicate => 'has_SecurityToken',
-			     default => sub {
-				 if (defined($_[0]->temp_creds)) {
-				     return $_[0]->temp_creds->{'Token'};
-				 } else {
-				     return undef;
-				 }
-			     }
+has 'SecurityToken' => (
+    is        => 'ro',
+    isa       => 'Str',
+    required  => 0,
+    lazy      => 1,
+    predicate => 'has_SecurityToken',
+    default   => sub {
+        if ( defined( $_[0]->temp_creds ) ) {
+            return $_[0]->temp_creds->{'Token'};
+        }
+        else {
+            return undef;
+        }
+    }
 );
-has 'debug'				=> ( is => 'ro', isa => 'Str', required => 0, default => 0 );
-has 'signature_version'	=> ( is => 'ro', isa => 'Int', required => 1, default => 2 );
-has 'version'			=> ( is => 'ro', isa => 'Str', required => 1, default => '2014-10-01' );
-has 'region'			=> ( is => 'ro', isa => 'Str', required => 1, default => 'us-east-1' );
-has 'ssl'				=> ( is => 'ro', isa => 'Bool', required => 1, default => 1 );
-has 'return_errors'     => ( is => 'ro', isa => 'Bool', default => 0 );
-has 'base_url'			=> ( 
-	is			=> 'ro', 
-	isa			=> 'Str', 
-	required	=> 1,
-	lazy		=> 1,
-	default		=> sub {
-		return 'http' . ($_[0]->ssl ? 's' : '') . '://ec2.' . $_[0]->region . '.amazonaws.com';
-	}
+has 'debug' => ( is => 'ro', isa => 'Str', required => 0, default => 0 );
+has 'signature_version' =>
+  ( is => 'ro', isa => 'Int', required => 1, default => 2 );
+has 'version' =>
+  ( is => 'ro', isa => 'Str', required => 1, default => '2014-10-01' );
+has 'region' =>
+  ( is => 'ro', isa => 'Str', required => 1, default => 'us-east-1' );
+has 'ssl' => ( is => 'ro', isa => 'Bool', required => 1, default => 1 );
+has 'return_errors' => ( is => 'ro', isa => 'Bool', default => 0 );
+has 'base_url' => (
+    is       => 'ro',
+    isa      => 'Str',
+    required => 1,
+    lazy     => 1,
+    default  => sub {
+        return
+            'http'
+          . ( $_[0]->ssl ? 's' : '' )
+          . '://ec2.'
+          . $_[0]->region
+          . '.amazonaws.com';
+    }
 );
-has 'temp_creds'       => ( is => 'ro',
-			     lazy => 1,
-			     default => sub {
-				 my $ret;
-				 $ret = $_[0]->_fetch_iam_security_credentials();
-			     },
-			     predicate => 'has_temp_creds'
+has 'temp_creds' => (
+    is      => 'ro',
+    lazy    => 1,
+    default => sub {
+        my $ret;
+        $ret = $_[0]->_fetch_iam_security_credentials();
+    },
+    predicate => 'has_temp_creds'
 );
-
 
 sub timestamp {
-    return strftime("%Y-%m-%dT%H:%M:%SZ",gmtime);
+    return strftime( "%Y-%m-%dT%H:%M:%SZ", gmtime );
 }
 
 sub _fetch_iam_security_credentials {
-    my $self = shift;
+    my $self   = shift;
     my $retval = {};
 
     my $ua = LWP::UserAgent->new();
+
     # Fail quickly if this is not running on an EC2 instance
     $ua->timeout(2);
 
-    my $url = 'http://169.254.169.254/latest/meta-data/iam/security-credentials/';
-    
+    my $url =
+      'http://169.254.169.254/latest/meta-data/iam/security-credentials/';
+
     $self->_debug("Attempting to fetch instance credentials");
 
     my $res = $ua->get($url);
-    if ($res->code == 200) {
-	# Assumes the first profile is the only profile
-	my $profile = (split /\n/, $res->content())[0];
+    if ( $res->code == 200 ) {
 
-	$res = $ua->get($url . $profile);
+        # Assumes the first profile is the only profile
+        my $profile = ( split /\n/, $res->content() )[0];
 
-	if ($res->code == 200) {
-	    $retval->{'Profile'} = $profile;
-	    foreach (split /\n/, $res->content()) {
-		return undef if /Code/ && !/Success/;
-		if (m/.*"([^"]+)"\s+:\s+"([^"]+)",/) {
-		    $retval->{$1} = $2;
-		}
-	    }
+        $res = $ua->get( $url . $profile );
 
-	    return $retval if (keys %{$retval});
-	}
-	 
+        if ( $res->code == 200 ) {
+            $retval->{'Profile'} = $profile;
+            foreach ( split /\n/, $res->content() ) {
+                return undef if /Code/ && !/Success/;
+                if (m/.*"([^"]+)"\s+:\s+"([^"]+)",/) {
+                    $retval->{$1} = $2;
+                }
+            }
+
+            return $retval if ( keys %{$retval} );
+        }
+
     }
-   
+
     return undef;
 }
 
 sub _sign {
-	my $self						= shift;
-	my %args						= @_;
-	my $action						= delete $args{Action};
-	my %sign_hash					= %args;
-	my $timestamp					= $self->timestamp;
+    my $self      = shift;
+    my %args      = @_;
+    my $action    = delete $args{Action};
+    my %sign_hash = %args;
+    my $timestamp = $self->timestamp;
 
-	$sign_hash{AWSAccessKeyId}		= $self->AWSAccessKeyId;
-	$sign_hash{Action}				= $action;
-	$sign_hash{Timestamp}			= $timestamp;
-	$sign_hash{Version}				= $self->version;
-	$sign_hash{SignatureVersion}	= $self->signature_version;
-    $sign_hash{SignatureMethod}     = "HmacSHA256";
-	if ($self->has_temp_creds || $self->has_SecurityToken) {
-	    $sign_hash{SecurityToken} = $self->SecurityToken;
-	}
+    $sign_hash{AWSAccessKeyId}   = $self->AWSAccessKeyId;
+    $sign_hash{Action}           = $action;
+    $sign_hash{Timestamp}        = $timestamp;
+    $sign_hash{Version}          = $self->version;
+    $sign_hash{SignatureVersion} = $self->signature_version;
+    $sign_hash{SignatureMethod}  = "HmacSHA256";
+    if ( $self->has_temp_creds || $self->has_SecurityToken ) {
+        $sign_hash{SecurityToken} = $self->SecurityToken;
+    }
 
+    my $sign_this = "POST\n";
+    my $uri       = URI->new( $self->base_url );
 
-	my $sign_this = "POST\n";
-	my $uri = URI->new($self->base_url);
-
-    $sign_this .= lc($uri->host) . "\n";
+    $sign_this .= lc( $uri->host ) . "\n";
     $sign_this .= "/\n";
 
     my @signing_elements;
 
-	foreach my $key (sort keys %sign_hash) {
-		push @signing_elements, uri_escape_utf8($key)."=".uri_escape_utf8($sign_hash{$key});
-	}
+    foreach my $key ( sort keys %sign_hash ) {
+        push @signing_elements,
+          uri_escape_utf8($key) . "=" . uri_escape_utf8( $sign_hash{$key} );
+    }
 
     $sign_this .= join "&", @signing_elements;
 
-	$self->_debug("QUERY TO SIGN: $sign_this");
-	my $encoded = $self->_hashit($self->SecretAccessKey, $sign_this);
+    $self->_debug("QUERY TO SIGN: $sign_this");
+    my $encoded = $self->_hashit( $self->SecretAccessKey, $sign_this );
 
-    my $content = join "&", @signing_elements, 'Signature=' . uri_escape_utf8($encoded);
+    my $content = join "&", @signing_elements,
+      'Signature=' . uri_escape_utf8($encoded);
 
-	my $ur	= $uri->as_string();
-	$self->_debug("GENERATED QUERY URL: $ur");
-	my $ua	= LWP::UserAgent->new();
+    my $ur = $uri->as_string();
+    $self->_debug("GENERATED QUERY URL: $ur");
+    my $ua = LWP::UserAgent->new();
     $ua->env_proxy;
-	my $res	= $ua->post($ur, Content => $content);
-	# We should force <item> elements to be in an array
-	my $xs	= XML::Simple->new(
-        ForceArray => qr/(?:item|Errors)/i, # Always want item elements unpacked to arrays
-        KeyAttr => '',                      # Turn off folding for 'id', 'name', 'key' elements
-        SuppressEmpty => undef,             # Turn empty values into explicit undefs
+    my $res = $ua->post( $ur, Content => $content );
+
+    # We should force <item> elements to be in an array
+    my $xs = XML::Simple->new(
+        ForceArray =>
+          qr/(?:item|Errors)/i,   # Always want item elements unpacked to arrays
+        KeyAttr => '',    # Turn off folding for 'id', 'name', 'key' elements
+        SuppressEmpty => undef,    # Turn empty values into explicit undefs
     );
-	my $xml;
-	
-	# Check the result for connectivity problems, if so throw an error
- 	if ($res->code >= 500) {
- 		my $message = $res->status_line;
-		$xml = <<EOXML;
+    my $xml;
+
+    # Check the result for connectivity problems, if so throw an error
+    if ( $res->code >= 500 ) {
+        my $message = $res->status_line;
+        $xml = <<EOXML;
 <xml>
 	<RequestID>N/A</RequestID>
 	<Errors>
@@ -336,86 +356,94 @@ sub _sign {
 </xml>
 EOXML
 
- 	}
-	else {
-		$xml = $res->content();
-	}
+    }
+    else {
+        $xml = $res->content();
+    }
 
-	my $ref = $xs->XMLin($xml);
-	warn Dumper($ref) . "\n\n" if $self->debug == 1;
+    my $ref = $xs->XMLin($xml);
+    warn Dumper($ref) . "\n\n" if $self->debug == 1;
 
-	return $ref;
+    return $ref;
 }
 
 sub _parse_errors {
-	my $self		= shift;
-	my $errors_xml	= shift;
-	
-	my $es;
-	my $request_id = $errors_xml->{RequestID};
+    my $self       = shift;
+    my $errors_xml = shift;
 
-	foreach my $e (@{$errors_xml->{Errors}}) {
-		my $error = Net::Amazon::EC2::Error->new(
-			code	=> $e->{Error}{Code},
-			message	=> $e->{Error}{Message},
-		);
-		
-		push @$es, $error;
-	}
-	
-	my $errors = Net::Amazon::EC2::Errors->new(
-		request_id	=> $request_id,
-		errors		=> $es,
-	);
+    my $es;
+    my $request_id = $errors_xml->{RequestID};
 
-	foreach my $error (@{$errors->errors}) {
-		$self->_debug("ERROR CODE: " . $error->code . " MESSAGE: " . $error->message . " FOR REQUEST: " . $errors->request_id);
-	}
+    foreach my $e ( @{ $errors_xml->{Errors} } ) {
+        my $error = Net::Amazon::EC2::Error->new(
+            code    => $e->{Error}{Code},
+            message => $e->{Error}{Message},
+        );
 
-	# User wants old behaviour
-	if ($self->return_errors) {
-		return $errors;
-	}
+        push @$es, $error;
+    }
 
-	# Print a stack trace if debugging is enabled
-	if ($self->debug) {
-		confess 'Last error was: ' . $es->[-1]->message;
-	} else {
-		croak $errors;
-	}
+    my $errors = Net::Amazon::EC2::Errors->new(
+        request_id => $request_id,
+        errors     => $es,
+    );
+
+    foreach my $error ( @{ $errors->errors } ) {
+        $self->_debug( "ERROR CODE: "
+              . $error->code
+              . " MESSAGE: "
+              . $error->message
+              . " FOR REQUEST: "
+              . $errors->request_id );
+    }
+
+    # User wants old behaviour
+    if ( $self->return_errors ) {
+        return $errors;
+    }
+
+    # Print a stack trace if debugging is enabled
+    if ( $self->debug ) {
+        confess 'Last error was: ' . $es->[-1]->message;
+    }
+    else {
+        croak $errors;
+    }
 }
 
 sub _debug {
-	my $self	= shift;
-	my $message	= shift;
-	
-	if ((grep { defined && length} $self->debug) && $self->debug == 1) {
-		print "$message\n\n\n\n";
-	}
+    my $self    = shift;
+    my $message = shift;
+
+    if ( ( grep { defined && length } $self->debug ) && $self->debug == 1 ) {
+        print "$message\n\n\n\n";
+    }
 }
 
 # HMAC sign the query with the aws secret access key and base64 encodes the result.
 sub _hashit {
-	my $self								= shift;
-	my ($secret_access_key, $query_string)	= @_;
-	
-	return encode_base64(hmac_sha256($query_string, $secret_access_key), '');
+    my $self = shift;
+    my ( $secret_access_key, $query_string ) = @_;
+
+    return encode_base64( hmac_sha256( $query_string, $secret_access_key ),
+        '' );
 }
 
 sub _build_filters {
-	my ($self, $args) = @_;
-	my $filters	= delete $args->{Filter};
+    my ( $self, $args ) = @_;
+    my $filters = delete $args->{Filter};
 
-	return unless $filters && ref($filters) eq 'ARRAY';
+    return unless $filters && ref($filters) eq 'ARRAY';
 
-	$filters	= [ $filters ] unless ref($filters->[0]) eq 'ARRAY';
-	my $count	= 1;
-	foreach my $filter (@{$filters}) {
-		my ($name, @args) = @$filter;
-		$args->{"Filter." . $count.".Name"} = $name;
-		$args->{"Filter." . $count.".Value.".$_} = $args[$_-1] for 1..scalar @args;
-		$count++;
-	}
+    $filters = [$filters] unless ref( $filters->[0] ) eq 'ARRAY';
+    my $count = 1;
+    foreach my $filter ( @{$filters} ) {
+        my ( $name, @args ) = @$filter;
+        $args->{ "Filter." . $count . ".Name" } = $name;
+        $args->{ "Filter." . $count . ".Value." . $_ } = $args[ $_ - 1 ]
+          for 1 .. scalar @args;
+        $count++;
+    }
 }
 
 =head1 OBJECT METHODS
@@ -429,16 +457,16 @@ Returns the IP address obtained.
 =cut
 
 sub allocate_address {
-	my $self = shift;
+    my $self = shift;
 
-	my $xml = $self->_sign(Action  => 'AllocateAddress');
+    my $xml = $self->_sign( Action => 'AllocateAddress' );
 
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		return $xml->{publicIp};
-	}
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        return $xml->{publicIp};
+    }
 }
 
 =head2 allocate_vpc_address()
@@ -450,16 +478,16 @@ Returns the allocationId of the allocated address.
 =cut
 
 sub allocate_vpc_address {
-        my $self = shift;
+    my $self = shift;
 
-        my $xml = $self->_sign(Action  => 'AllocateAddress', Domain => 'vpc');
+    my $xml = $self->_sign( Action => 'AllocateAddress', Domain => 'vpc' );
 
-        if ( grep { defined && length } $xml->{Errors} ) {
-                return $self->_parse_errors($xml);
-        }
-        else {
-                return $xml->{allocationId};
-        }
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        return $xml->{allocationId};
+    }
 }
 
 =head2 associate_address(%params)
@@ -487,26 +515,29 @@ Returns true if the association succeeded.
 =cut
 
 sub associate_address {
-	my $self = shift;
-	my %args = validate( @_, {
-		InstanceId		=> { type => SCALAR },
-		PublicIp 		=> { type => SCALAR, optional => 1 },
-		AllocationId		=> { type => SCALAR, optional => 1 },
-	});
-	
-	my $xml = $self->_sign(Action  => 'AssociateAddress', %args);
+    my $self = shift;
+    my %args = validate(
+        @_,
+        {
+            InstanceId   => { type => SCALAR },
+            PublicIp     => { type => SCALAR, optional => 1 },
+            AllocationId => { type => SCALAR, optional => 1 },
+        }
+    );
 
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		if ($xml->{return} eq 'true') {
-			return 1;
-		}
-		else {
-			return undef;
-		}
-	}
+    my $xml = $self->_sign( Action => 'AssociateAddress', %args );
+
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        if ( $xml->{return} eq 'true' ) {
+            return 1;
+        }
+        else {
+            return undef;
+        }
+    }
 }
 
 =head2 attach_volume(%params)
@@ -534,29 +565,32 @@ Returns a Net::Amazon::EC2::Attachment object containing the resulting volume st
 =cut
 
 sub attach_volume {
-	my $self = shift;
-	my %args = validate( @_, {
-		VolumeId	=> { type => SCALAR },
-		InstanceId	=> { type => SCALAR },
-		Device		=> { type => SCALAR },
-	});
+    my $self = shift;
+    my %args = validate(
+        @_,
+        {
+            VolumeId   => { type => SCALAR },
+            InstanceId => { type => SCALAR },
+            Device     => { type => SCALAR },
+        }
+    );
 
-	my $xml = $self->_sign(Action  => 'AttachVolume', %args);
-	
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		my $attachment = Net::Amazon::EC2::Attachment->new(
-			volume_id	=> $xml->{volumeId},
-			status		=> $xml->{status},
-			instance_id	=> $xml->{instanceId},
-			attach_time	=> $xml->{attachTime},
-			device		=> $xml->{device},
-		);
-		
-		return $attachment;
-	}
+    my $xml = $self->_sign( Action => 'AttachVolume', %args );
+
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        my $attachment = Net::Amazon::EC2::Attachment->new(
+            volume_id   => $xml->{volumeId},
+            status      => $xml->{status},
+            instance_id => $xml->{instanceId},
+            attach_time => $xml->{attachTime},
+            device      => $xml->{device},
+        );
+
+        return $attachment;
+    }
 }
 
 =head2 authorize_security_group_ingress(%params)
@@ -603,39 +637,41 @@ Returns 1 if rule is added successfully.
 =cut
 
 sub authorize_security_group_ingress {
-	my $self = shift;
-	my %args = validate( @_, {
-		GroupName					=> { type => SCALAR },
-		SourceSecurityGroupName 	=> { 
-			type => SCALAR,
-			depends => ['SourceSecurityGroupOwnerId'],
-			optional => 1 ,
-		},
-		SourceSecurityGroupOwnerId	=> { type => SCALAR, optional => 1 },
-		IpProtocol 					=> { 
-			type => SCALAR,
-			depends => ['FromPort', 'ToPort'],
-			optional => 1 
-		},
-		FromPort 					=> { type => SCALAR, optional => 1 },
-		ToPort 						=> { type => SCALAR, optional => 1 },
-		CidrIp						=> { type => SCALAR, optional => 1 },
-	});
-	
-	
-	my $xml = $self->_sign(Action  => 'AuthorizeSecurityGroupIngress', %args);
-	
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		if ($xml->{return} eq 'true') {
-			return 1;
-		}
-		else {
-			return undef;
-		}
-	}
+    my $self = shift;
+    my %args = validate(
+        @_,
+        {
+            GroupName               => { type => SCALAR },
+            SourceSecurityGroupName => {
+                type     => SCALAR,
+                depends  => ['SourceSecurityGroupOwnerId'],
+                optional => 1,
+            },
+            SourceSecurityGroupOwnerId => { type => SCALAR, optional => 1 },
+            IpProtocol                 => {
+                type     => SCALAR,
+                depends  => [ 'FromPort', 'ToPort' ],
+                optional => 1
+            },
+            FromPort => { type => SCALAR, optional => 1 },
+            ToPort   => { type => SCALAR, optional => 1 },
+            CidrIp   => { type => SCALAR, optional => 1 },
+        }
+    );
+
+    my $xml = $self->_sign( Action => 'AuthorizeSecurityGroupIngress', %args );
+
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        if ( $xml->{return} eq 'true' ) {
+            return 1;
+        }
+        else {
+            return undef;
+        }
+    }
 }
 
 =head2 bundle_instance(%params)
@@ -684,40 +720,45 @@ Returns a Net::Amazon::EC2::BundleInstanceResponse object
 =cut
 
 sub bundle_instance {
-	my $self = shift;
-	my %args = validate( @_, {
-		'InstanceId'						=> { type => SCALAR },
-		'Storage.S3.Bucket'					=> { type => SCALAR },
-		'Storage.S3.Prefix'					=> { type => SCALAR },
-		'Storage.S3.AWSAccessKeyId'			=> { type => SCALAR },
-		'Storage.S3.UploadPolicy'			=> { type => SCALAR },
-		'Storage.S3.UploadPolicySignature'	=> { type => SCALAR },
-	});
+    my $self = shift;
+    my %args = validate(
+        @_,
+        {
+            'InstanceId'                       => { type => SCALAR },
+            'Storage.S3.Bucket'                => { type => SCALAR },
+            'Storage.S3.Prefix'                => { type => SCALAR },
+            'Storage.S3.AWSAccessKeyId'        => { type => SCALAR },
+            'Storage.S3.UploadPolicy'          => { type => SCALAR },
+            'Storage.S3.UploadPolicySignature' => { type => SCALAR },
+        }
+    );
 
-	my $xml = $self->_sign(Action  => 'BundleInstance', %args);
-	
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		my $bundle = Net::Amazon::EC2::BundleInstanceResponse->new(
-			instance_id					=> $xml->{bundleInstanceTask}{instanceId},
-			bundle_id					=> $xml->{bundleInstanceTask}{bundleId},
-			state						=> $xml->{bundleInstanceTask}{state},
-			start_time					=> $xml->{bundleInstanceTask}{startTime},
-			update_time					=> $xml->{bundleInstanceTask}{updateTime},
-			progress					=> $xml->{bundleInstanceTask}{progress},
-			s3_bucket					=> $xml->{bundleInstanceTask}{storage}{S3}{bucket},
-			s3_prefix					=> $xml->{bundleInstanceTask}{storage}{S3}{bucket},
-			s3_aws_access_key_id		=> $xml->{bundleInstanceTask}{storage}{S3}{bucket},
-			s3_upload_policy			=> $xml->{bundleInstanceTask}{storage}{S3}{bucket},
-			s3_policy_upload_signature	=> $xml->{bundleInstanceTask}{storage}{S3}{bucket},
-			bundle_error_code			=> $xml->{bundleInstanceTask}{error}{code},
-			bundle_error_message		=> $xml->{bundleInstanceTask}{error}{message},
-		);
-		
-		return $bundle;
-	}
+    my $xml = $self->_sign( Action => 'BundleInstance', %args );
+
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        my $bundle = Net::Amazon::EC2::BundleInstanceResponse->new(
+            instance_id => $xml->{bundleInstanceTask}{instanceId},
+            bundle_id   => $xml->{bundleInstanceTask}{bundleId},
+            state       => $xml->{bundleInstanceTask}{state},
+            start_time  => $xml->{bundleInstanceTask}{startTime},
+            update_time => $xml->{bundleInstanceTask}{updateTime},
+            progress    => $xml->{bundleInstanceTask}{progress},
+            s3_bucket   => $xml->{bundleInstanceTask}{storage}{S3}{bucket},
+            s3_prefix   => $xml->{bundleInstanceTask}{storage}{S3}{bucket},
+            s3_aws_access_key_id =>
+              $xml->{bundleInstanceTask}{storage}{S3}{bucket},
+            s3_upload_policy => $xml->{bundleInstanceTask}{storage}{S3}{bucket},
+            s3_policy_upload_signature =>
+              $xml->{bundleInstanceTask}{storage}{S3}{bucket},
+            bundle_error_code    => $xml->{bundleInstanceTask}{error}{code},
+            bundle_error_message => $xml->{bundleInstanceTask}{error}{message},
+        );
+
+        return $bundle;
+    }
 }
 
 =head2 cancel_bundle_task(%params)
@@ -737,35 +778,35 @@ Returns a Net::Amazon::EC2::BundleInstanceResponse object
 =cut
 
 sub cancel_bundle_task {
-	my $self = shift;
-	my %args = validate( @_, {
-		'BundleId'							=> { type => SCALAR },
-	});
+    my $self = shift;
+    my %args = validate( @_, { 'BundleId' => { type => SCALAR }, } );
 
-	my $xml = $self->_sign(Action  => 'CancelBundleTask', %args);
-	
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		my $bundle = Net::Amazon::EC2::BundleInstanceResponse->new(
-			instance_id					=> $xml->{bundleInstanceTask}{instanceId},
-			bundle_id					=> $xml->{bundleInstanceTask}{bundleId},
-			state						=> $xml->{bundleInstanceTask}{state},
-			start_time					=> $xml->{bundleInstanceTask}{startTime},
-			update_time					=> $xml->{bundleInstanceTask}{updateTime},
-			progress					=> $xml->{bundleInstanceTask}{progress},
-			s3_bucket					=> $xml->{bundleInstanceTask}{storage}{S3}{bucket},
-			s3_prefix					=> $xml->{bundleInstanceTask}{storage}{S3}{bucket},
-			s3_aws_access_key_id		=> $xml->{bundleInstanceTask}{storage}{S3}{bucket},
-			s3_upload_policy			=> $xml->{bundleInstanceTask}{storage}{S3}{bucket},
-			s3_policy_upload_signature	=> $xml->{bundleInstanceTask}{storage}{S3}{bucket},
-			bundle_error_code			=> $xml->{bundleInstanceTask}{error}{code},
-			bundle_error_message		=> $xml->{bundleInstanceTask}{error}{message},
-		);
-		
-		return $bundle;
-	}
+    my $xml = $self->_sign( Action => 'CancelBundleTask', %args );
+
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        my $bundle = Net::Amazon::EC2::BundleInstanceResponse->new(
+            instance_id => $xml->{bundleInstanceTask}{instanceId},
+            bundle_id   => $xml->{bundleInstanceTask}{bundleId},
+            state       => $xml->{bundleInstanceTask}{state},
+            start_time  => $xml->{bundleInstanceTask}{startTime},
+            update_time => $xml->{bundleInstanceTask}{updateTime},
+            progress    => $xml->{bundleInstanceTask}{progress},
+            s3_bucket   => $xml->{bundleInstanceTask}{storage}{S3}{bucket},
+            s3_prefix   => $xml->{bundleInstanceTask}{storage}{S3}{bucket},
+            s3_aws_access_key_id =>
+              $xml->{bundleInstanceTask}{storage}{S3}{bucket},
+            s3_upload_policy => $xml->{bundleInstanceTask}{storage}{S3}{bucket},
+            s3_policy_upload_signature =>
+              $xml->{bundleInstanceTask}{storage}{S3}{bucket},
+            bundle_error_code    => $xml->{bundleInstanceTask}{error}{code},
+            bundle_error_message => $xml->{bundleInstanceTask}{error}{message},
+        );
+
+        return $bundle;
+    }
 }
 
 =head2 confirm_product_instance(%params)
@@ -789,25 +830,29 @@ Returns a Net::Amazon::EC2::ConfirmProductInstanceResponse object
 =cut
 
 sub confirm_product_instance {
-	my $self = shift;
-	my %args = validate( @_, {
-		ProductCode	=> { type => SCALAR },
-		InstanceId	=> { type => SCALAR },
-	});
+    my $self = shift;
+    my %args = validate(
+        @_,
+        {
+            ProductCode => { type => SCALAR },
+            InstanceId  => { type => SCALAR },
+        }
+    );
 
-	my $xml = $self->_sign(Action  => 'ConfirmProductInstance', %args);
-	
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		my $confirm_response = Net::Amazon::EC2::ConfirmProductInstanceResponse->new(
-			'return'		=> $xml->{'return'},
-			owner_id		=> $xml->{ownerId},
-		);
-		
-		return $confirm_response;
-	}
+    my $xml = $self->_sign( Action => 'ConfirmProductInstance', %args );
+
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        my $confirm_response =
+          Net::Amazon::EC2::ConfirmProductInstanceResponse->new(
+            'return' => $xml->{'return'},
+            owner_id => $xml->{ownerId},
+          );
+
+        return $confirm_response;
+    }
 }
 
 =head2 create_image(%params)
@@ -862,53 +907,57 @@ Returns the ID of the AMI created.
 =cut
 
 sub create_image {
-	my $self = shift;
-	my %args = validate( @_, {
-		InstanceId			=> { type => SCALAR },
-		Name				=> { type => SCALAR },
-		Description			=> { type => SCALAR, optional => 1 },
-		NoReboot			=> { type => SCALAR, optional => 1 },
-		BlockDeviceMapping	=> { type => ARRAYREF, optional => 1 },
-	});
-		
+    my $self = shift;
+    my %args = validate(
+        @_,
+        {
+            InstanceId         => { type => SCALAR },
+            Name               => { type => SCALAR },
+            Description        => { type => SCALAR, optional => 1 },
+            NoReboot           => { type => SCALAR, optional => 1 },
+            BlockDeviceMapping => { type => ARRAYREF, optional => 1 },
+        }
+    );
 
-	if (my $bdm = delete $args{BlockDeviceMapping}) {
-		my $n = 0;
-		for my $bdme (@$bdm) {
-			my($device, $block_device) = split /=/, $bdme, 2;
-			$args{"BlockDeviceMapping.${n}.DeviceName"} = $device;
+    if ( my $bdm = delete $args{BlockDeviceMapping} ) {
+        my $n = 0;
+        for my $bdme (@$bdm) {
+            my ( $device, $block_device ) = split /=/, $bdme, 2;
+            $args{"BlockDeviceMapping.${n}.DeviceName"} = $device;
 
-			if ($block_device =~ /^ephemeral[0-9]+$/) {
-				$args{"BlockDeviceMapping.${n}.VirtualName"} = $block_device;
-			} elsif ($block_device eq 'none') {
-				$args{"BlockDeviceMapping.${n}.NoDevice"} = '';
-			} else {
-				my @keys = qw(
-								 Ebs.SnapshotId
-								 Ebs.VolumeSize
-								 Ebs.DeleteOnTermination
-								 Ebs.VolumeType
-								 Ebs.Iops
-							);
-				for my $bde (split /:/, $block_device) {
-					my $key = shift @keys;
-					next unless $bde;
-					$args{"BlockDeviceMapping.${n}.${key}"} = $bde;
-				}
-			}
+            if ( $block_device =~ /^ephemeral[0-9]+$/ ) {
+                $args{"BlockDeviceMapping.${n}.VirtualName"} = $block_device;
+            }
+            elsif ( $block_device eq 'none' ) {
+                $args{"BlockDeviceMapping.${n}.NoDevice"} = '';
+            }
+            else {
+                my @keys = qw(
+                  Ebs.SnapshotId
+                  Ebs.VolumeSize
+                  Ebs.DeleteOnTermination
+                  Ebs.VolumeType
+                  Ebs.Iops
+                );
+                for my $bde ( split /:/, $block_device ) {
+                    my $key = shift @keys;
+                    next unless $bde;
+                    $args{"BlockDeviceMapping.${n}.${key}"} = $bde;
+                }
+            }
 
-			$n++;
-		}
-	}
+            $n++;
+        }
+    }
 
-	my $xml = $self->_sign(Action  => 'CreateImage', %args);
+    my $xml = $self->_sign( Action => 'CreateImage', %args );
 
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		return $xml->{imageId};
-	}
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        return $xml->{imageId};
+    }
 }
 
 =head2 create_key_pair(%params)
@@ -928,25 +977,23 @@ Returns a Net::Amazon::EC2::KeyPair object
 =cut
 
 sub create_key_pair {
-	my $self = shift;
-	my %args = validate( @_, {
-		KeyName => { type => SCALAR },
-	});
-		
-	my $xml = $self->_sign(Action  => 'CreateKeyPair', %args);
+    my $self = shift;
+    my %args = validate( @_, { KeyName => { type => SCALAR }, } );
 
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		my $key_pair = Net::Amazon::EC2::KeyPair->new(
-			key_name		=> $xml->{keyName},
-			key_fingerprint	=> $xml->{keyFingerprint},
-			key_material	=> $xml->{keyMaterial},
-		);
-		
-		return $key_pair;
-	}
+    my $xml = $self->_sign( Action => 'CreateKeyPair', %args );
+
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        my $key_pair = Net::Amazon::EC2::KeyPair->new(
+            key_name        => $xml->{keyName},
+            key_fingerprint => $xml->{keyFingerprint},
+            key_material    => $xml->{keyMaterial},
+        );
+
+        return $key_pair;
+    }
 }
 
 =head2 create_security_group(%params)
@@ -970,26 +1017,28 @@ Returns 1 if the group creation succeeds.
 =cut
 
 sub create_security_group {
-	my $self = shift;
-	my %args = validate( @_, {
-		GroupName				=> { type => SCALAR },
-		GroupDescription 		=> { type => SCALAR },
-	});
-	
-	
-	my $xml = $self->_sign(Action  => 'CreateSecurityGroup', %args);
+    my $self = shift;
+    my %args = validate(
+        @_,
+        {
+            GroupName        => { type => SCALAR },
+            GroupDescription => { type => SCALAR },
+        }
+    );
 
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		if ($xml->{return} eq 'true') {
-			return 1;
-		}
-		else {
-			return undef;
-		}
-	}	
+    my $xml = $self->_sign( Action => 'CreateSecurityGroup', %args );
+
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        if ( $xml->{return} eq 'true' ) {
+            return 1;
+        }
+        else {
+            return undef;
+        }
+    }
 }
 
 =head2 create_snapshot(%params)
@@ -1013,36 +1062,40 @@ Returns a Net::Amazon::EC2::Snapshot object of the newly created snapshot.
 =cut
 
 sub create_snapshot {
-	my $self = shift;
-	my %args = validate( @_, {
-		VolumeId	=> { type => SCALAR },
-		Description	=> { type => SCALAR, optional => 1 },
-	});
-	
-	my $xml = $self->_sign(Action  => 'CreateSnapshot', %args);
+    my $self = shift;
+    my %args = validate(
+        @_,
+        {
+            VolumeId    => { type => SCALAR },
+            Description => { type => SCALAR, optional => 1 },
+        }
+    );
 
-	
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		unless ( grep { defined && length } $xml->{progress} and ref $xml->{progress} ne 'HASH') {
-			$xml->{progress} = undef;
-		}
+    my $xml = $self->_sign( Action => 'CreateSnapshot', %args );
 
-		my $snapshot = Net::Amazon::EC2::Snapshot->new(
-			snapshot_id		=> $xml->{snapshotId},
-			status			=> $xml->{status},
-			volume_id		=> $xml->{volumeId},
-			start_time		=> $xml->{startTime},
-			progress		=> $xml->{progress},
-			owner_id		=> $xml->{ownerId},
-			volume_size		=> $xml->{volumeSize},
-			description		=> $xml->{description},
-		);
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        unless ( grep { defined && length } $xml->{progress}
+            and ref $xml->{progress} ne 'HASH' )
+        {
+            $xml->{progress} = undef;
+        }
 
-  		return $snapshot;
-	}
+        my $snapshot = Net::Amazon::EC2::Snapshot->new(
+            snapshot_id => $xml->{snapshotId},
+            status      => $xml->{status},
+            volume_id   => $xml->{volumeId},
+            start_time  => $xml->{startTime},
+            progress    => $xml->{progress},
+            owner_id    => $xml->{ownerId},
+            volume_size => $xml->{volumeSize},
+            description => $xml->{description},
+        );
+
+        return $snapshot;
+    }
 }
 
 =head2 create_tags(%params)
@@ -1066,48 +1119,51 @@ Returns true if the tag creation succeeded.
 =cut
 
 sub create_tags {
-	my $self = shift;
-	my %args = validate( @_, {
-		ResourceId				=> { type => ARRAYREF | SCALAR },
-		Tags				    => { type => HASHREF },
-	});
+    my $self = shift;
+    my %args = validate(
+        @_,
+        {
+            ResourceId => { type => ARRAYREF | SCALAR },
+            Tags       => { type => HASHREF },
+        }
+    );
 
-        if (ref ($args{'ResourceId'}) eq 'ARRAY') {
-                my $keys                        = delete $args{'ResourceId'};
-                my $count                       = 1;
-                foreach my $key (@{$keys}) {
-                        $args{"ResourceId." . $count} = $key;
-                        $count++;
-                }
+    if ( ref( $args{'ResourceId'} ) eq 'ARRAY' ) {
+        my $keys  = delete $args{'ResourceId'};
+        my $count = 1;
+        foreach my $key ( @{$keys} ) {
+            $args{ "ResourceId." . $count } = $key;
+            $count++;
+        }
+    }
+    else {
+        $args{"ResourceId.1"} = delete $args{'ResourceId'};
+    }
+
+    if ( ref( $args{'Tags'} ) eq 'HASH' ) {
+        my $count = 1;
+        my $tags  = delete $args{'Tags'};
+        foreach my $key ( keys %{$tags} ) {
+            last if $count > 10;
+            $args{ "Tag." . $count . ".Key" }   = $key;
+            $args{ "Tag." . $count . ".Value" } = $tags->{$key};
+            $count++;
+        }
+    }
+
+    my $xml = $self->_sign( Action => 'CreateTags', %args );
+
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        if ( $xml->{return} eq 'true' ) {
+            return 1;
         }
         else {
-                $args{"ResourceId.1"} = delete $args{'ResourceId'};
+            return undef;
         }
-
-	if (ref ($args{'Tags'}) eq 'HASH') {
-		my $count			= 1;
-        my $tags = delete $args{'Tags'};
-		foreach my $key ( keys %{$tags} ) {
-            last if $count > 10;
-			$args{"Tag." . $count . ".Key"} = $key;
-			$args{"Tag." . $count . ".Value"} = $tags->{$key};
-			$count++;
-		}
-	}
-
-	my $xml = $self->_sign(Action  => 'CreateTags', %args);
-
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		if ($xml->{return} eq 'true') {
-			return 1;
-		}
-		else {
-			return undef;
-		}
-	}
+    }
 }
 
 =head2 create_volume(%params)
@@ -1155,43 +1211,47 @@ status
 =cut
 
 sub create_volume {
-	my $self = shift;
-	my %args = validate( @_, {
-		Size				=> { type => SCALAR },
-		SnapshotId			=> { type => SCALAR, optional => 1 },
-		AvailabilityZone	=> { type => SCALAR },
-                VolumeType		=> { type => SCALAR, optional => 1 },
-                Iops			=> { type => SCALAR, optional => 1 },
-                Encrypted               => { type => SCALAR, optional => 1 },
+    my $self = shift;
+    my %args = validate(
+        @_,
+        {
+            Size             => { type => SCALAR },
+            SnapshotId       => { type => SCALAR, optional => 1 },
+            AvailabilityZone => { type => SCALAR },
+            VolumeType       => { type => SCALAR, optional => 1 },
+            Iops             => { type => SCALAR, optional => 1 },
+            Encrypted        => { type => SCALAR, optional => 1 },
 
-	});
+        }
+    );
 
-	my $xml = $self->_sign(Action  => 'CreateVolume', %args);
+    my $xml = $self->_sign( Action => 'CreateVolume', %args );
 
-	
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
 
-		unless ( grep { defined && length } $xml->{snapshotId} and ref $xml->{snapshotId} ne 'HASH') {
-			$xml->{snapshotId} = undef;
-		}
+        unless ( grep { defined && length } $xml->{snapshotId}
+            and ref $xml->{snapshotId} ne 'HASH' )
+        {
+            $xml->{snapshotId} = undef;
+        }
 
-		my $volume = Net::Amazon::EC2::Volume->new(
-			volume_id		=> $xml->{volumeId},
-			status			=> $xml->{status},
-			zone			=> $xml->{availabilityZone},
-			create_time		=> $xml->{createTime},
-			snapshot_id		=> $xml->{snapshotId},
-			size			=> $xml->{size},
-			volume_type		=> $xml->{volumeType},
-			iops			=> $xml->{iops},
-			encrypted		=> $xml->{encrypted},
-		);
+        my $volume = Net::Amazon::EC2::Volume->new(
+            volume_id   => $xml->{volumeId},
+            status      => $xml->{status},
+            zone        => $xml->{availabilityZone},
+            create_time => $xml->{createTime},
+            snapshot_id => $xml->{snapshotId},
+            size        => $xml->{size},
+            volume_type => $xml->{volumeType},
+            iops        => $xml->{iops},
+            encrypted   => $xml->{encrypted},
+        );
 
-		return $volume;
-	}
+        return $volume;
+    }
 }
 
 =head2 delete_key_pair(%params)
@@ -1211,24 +1271,22 @@ Returns 1 if the key was successfully deleted.
 =cut
 
 sub delete_key_pair {
-	my $self = shift;
-	my %args = validate( @_, {
-		KeyName => { type => SCALAR },
-	});
-		
-	my $xml = $self->_sign(Action  => 'DeleteKeyPair', %args);
+    my $self = shift;
+    my %args = validate( @_, { KeyName => { type => SCALAR }, } );
 
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		if ($xml->{return} eq 'true') {
-			return 1;
-		}
-		else {
-			return undef;
-		}
-	}	
+    my $xml = $self->_sign( Action => 'DeleteKeyPair', %args );
+
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        if ( $xml->{return} eq 'true' ) {
+            return 1;
+        }
+        else {
+            return undef;
+        }
+    }
 }
 
 =head2 delete_security_group(%params)
@@ -1248,25 +1306,22 @@ Returns 1 if the delete succeeded.
 =cut
 
 sub delete_security_group {
-	my $self = shift;
-	my %args = validate( @_, {
-		GroupName => { type => SCALAR },
-	});
-	
-	
-	my $xml = $self->_sign(Action  => 'DeleteSecurityGroup', %args);
-	
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		if ($xml->{return} eq 'true') {
-			return 1;
-		}
-		else {
-			return undef;
-		}
-	}
+    my $self = shift;
+    my %args = validate( @_, { GroupName => { type => SCALAR }, } );
+
+    my $xml = $self->_sign( Action => 'DeleteSecurityGroup', %args );
+
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        if ( $xml->{return} eq 'true' ) {
+            return 1;
+        }
+        else {
+            return undef;
+        }
+    }
 }
 
 =head2 delete_snapshot(%params)
@@ -1286,24 +1341,22 @@ Returns true if the deleting succeeded.
 =cut
 
 sub delete_snapshot {
-	my $self = shift;
-	my %args = validate( @_, {
-		SnapshotId	=> { type => SCALAR },
-	});
+    my $self = shift;
+    my %args = validate( @_, { SnapshotId => { type => SCALAR }, } );
 
-	my $xml = $self->_sign(Action  => 'DeleteSnapshot', %args);
+    my $xml = $self->_sign( Action => 'DeleteSnapshot', %args );
 
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		if ($xml->{return} eq 'true') {
-			return 1;
-		}
-		else {
-			return undef;
-		}
-	}
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        if ( $xml->{return} eq 'true' ) {
+            return 1;
+        }
+        else {
+            return undef;
+        }
+    }
 }
 
 =head2 delete_volume(%params)
@@ -1323,25 +1376,23 @@ Returns true if the deleting succeeded.
 =cut
 
 sub delete_volume {
-	my $self = shift;
-	my %args = validate( @_, {
-		VolumeId	=> { type => SCALAR, optional => 1 },
-	});
+    my $self = shift;
+    my %args =
+      validate( @_, { VolumeId => { type => SCALAR, optional => 1 }, } );
 
-	my $xml = $self->_sign(Action  => 'DeleteVolume', %args);
+    my $xml = $self->_sign( Action => 'DeleteVolume', %args );
 
-	
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		if ($xml->{return} eq 'true') {
-			return 1;
-		}
-		else {
-			return undef;
-		}
-	}
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        if ( $xml->{return} eq 'true' ) {
+            return 1;
+        }
+        else {
+            return undef;
+        }
+    }
 }
 
 =head2 delete_tags(%params)
@@ -1369,48 +1420,50 @@ Returns true if the releasing succeeded.
 =cut
 
 sub delete_tags {
-	my $self = shift;
-	my %args = validate( @_, {
-		ResourceId				=> { type => ARRAYREF | SCALAR },
-		'Tag.Key'				=> { type => ARRAYREF | SCALAR },
-		'Tag.Value'				=> { type => ARRAYREF | SCALAR, optional => 1 },
-	});
+    my $self = shift;
+    my %args = validate(
+        @_,
+        {
+            ResourceId  => { type => ARRAYREF | SCALAR },
+            'Tag.Key'   => { type => ARRAYREF | SCALAR },
+            'Tag.Value' => { type => ARRAYREF | SCALAR, optional => 1 },
+        }
+    );
 
-	# If we have a array ref of keys lets split them out into their Tag.n.Key format
-	if (ref ($args{'Tag.Key'}) eq 'ARRAY') {
-		my $keys			= delete $args{'Tag.Key'};
-		my $count			= 1;
-		foreach my $key (@{$keys}) {
-			$args{"Tag." . $count . ".Key"} = $key;
-			$count++;
-		}
-	}
+# If we have a array ref of keys lets split them out into their Tag.n.Key format
+    if ( ref( $args{'Tag.Key'} ) eq 'ARRAY' ) {
+        my $keys  = delete $args{'Tag.Key'};
+        my $count = 1;
+        foreach my $key ( @{$keys} ) {
+            $args{ "Tag." . $count . ".Key" } = $key;
+            $count++;
+        }
+    }
 
-	# If we have a array ref of values lets split them out into their Tag.n.Value format
-	if (ref ($args{'Tag.Value'}) eq 'ARRAY') {
-		my $values			= delete $args{'Tag.Value'};
-		my $count			= 1;
-		foreach my $value (@{$values}) {
-			$args{"Tag." . $count . ".Value"} = $value;
-			$count++;
-		}
-	}
+# If we have a array ref of values lets split them out into their Tag.n.Value format
+    if ( ref( $args{'Tag.Value'} ) eq 'ARRAY' ) {
+        my $values = delete $args{'Tag.Value'};
+        my $count  = 1;
+        foreach my $value ( @{$values} ) {
+            $args{ "Tag." . $count . ".Value" } = $value;
+            $count++;
+        }
+    }
 
-	my $xml = $self->_sign(Action  => 'DeleteTags', %args);
+    my $xml = $self->_sign( Action => 'DeleteTags', %args );
 
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		if ($xml->{return} eq 'true') {
-			return 1;
-		}
-		else {
-			return undef;
-		}
-	}
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        if ( $xml->{return} eq 'true' ) {
+            return 1;
+        }
+        else {
+            return undef;
+        }
+    }
 }
-
 
 =head2 deregister_image(%params)
 
@@ -1429,25 +1482,22 @@ Returns 1 if the deregistering succeeded
 =cut
 
 sub deregister_image {
-	my $self = shift;
-	my %args = validate( @_, {
-		ImageId	=> { type => SCALAR },
-	});
-	
+    my $self = shift;
+    my %args = validate( @_, { ImageId => { type => SCALAR }, } );
 
-	my $xml = $self->_sign(Action  => 'DeregisterImage', %args);
+    my $xml = $self->_sign( Action => 'DeregisterImage', %args );
 
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		if ($xml->{return} eq 'true') {
-			return 1;
-		}
-		else {
-			return undef;
-		}
-	}
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        if ( $xml->{return} eq 'true' ) {
+            return 1;
+        }
+        else {
+            return undef;
+        }
+    }
 }
 
 =head2 describe_addresses(%params)
@@ -1467,43 +1517,43 @@ Returns an array ref of Net::Amazon::EC2::DescribeAddress objects
 =cut
 
 sub describe_addresses {
-	my $self = shift;
-	my %args = validate( @_, {
-		PublicIp 		=> { type => SCALAR | ARRAYREF, optional => 1 },
-	});
+    my $self = shift;
+    my %args =
+      validate( @_,
+        { PublicIp => { type => SCALAR | ARRAYREF, optional => 1 }, } );
 
-	# If we have a array ref of ip addresses lets split them out into their PublicIp.n format
-	if (ref ($args{PublicIp}) eq 'ARRAY') {
-		my $ip_addresses	= delete $args{PublicIp};
-		my $count			= 1;
-		foreach my $ip_address (@{$ip_addresses}) {
-			$args{"PublicIp." . $count} = $ip_address;
-			$count++;
-		}
-	}
-	
-	my $addresses;
-	my $xml = $self->_sign(Action  => 'DescribeAddresses', %args);
-	
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		foreach my $addy (@{$xml->{addressesSet}{item}}) {
-			if (ref($addy->{instanceId}) eq 'HASH') {
-				undef $addy->{instanceId};
-			}
-			
-			my $address = Net::Amazon::EC2::DescribeAddress->new(
-				public_ip	=> $addy->{publicIp},
-				instance_id	=> $addy->{instanceId},
-			);
-			
-			push @$addresses, $address;
-		}
-		
-		return $addresses;
-	}
+# If we have a array ref of ip addresses lets split them out into their PublicIp.n format
+    if ( ref( $args{PublicIp} ) eq 'ARRAY' ) {
+        my $ip_addresses = delete $args{PublicIp};
+        my $count        = 1;
+        foreach my $ip_address ( @{$ip_addresses} ) {
+            $args{ "PublicIp." . $count } = $ip_address;
+            $count++;
+        }
+    }
+
+    my $addresses;
+    my $xml = $self->_sign( Action => 'DescribeAddresses', %args );
+
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        foreach my $addy ( @{ $xml->{addressesSet}{item} } ) {
+            if ( ref( $addy->{instanceId} ) eq 'HASH' ) {
+                undef $addy->{instanceId};
+            }
+
+            my $address = Net::Amazon::EC2::DescribeAddress->new(
+                public_ip   => $addy->{publicIp},
+                instance_id => $addy->{instanceId},
+            );
+
+            push @$addresses, $address;
+        }
+
+        return $addresses;
+    }
 }
 
 =head2 describe_availability_zones(%params)
@@ -1523,51 +1573,52 @@ Returns an array ref of Net::Amazon::EC2::AvailabilityZone objects
 =cut
 
 sub describe_availability_zones {
-	my $self = shift;
-	my %args = validate( @_, {
-		ZoneName	=> { type => SCALAR | ARRAYREF, optional => 1 },
-	});
+    my $self = shift;
+    my %args =
+      validate( @_,
+        { ZoneName => { type => SCALAR | ARRAYREF, optional => 1 }, } );
 
-	# If we have a array ref of zone names lets split them out into their ZoneName.n format
-	if (ref ($args{ZoneName}) eq 'ARRAY') {
-		my $zone_names		= delete $args{ZoneName};
-		my $count			= 1;
-		foreach my $zone_name (@{$zone_names}) {
-			$args{"ZoneName." . $count} = $zone_name;
-			$count++;
-		}
-	}
-	
-	my $xml = $self->_sign(Action  => 'DescribeAvailabilityZones', %args);
+# If we have a array ref of zone names lets split them out into their ZoneName.n format
+    if ( ref( $args{ZoneName} ) eq 'ARRAY' ) {
+        my $zone_names = delete $args{ZoneName};
+        my $count      = 1;
+        foreach my $zone_name ( @{$zone_names} ) {
+            $args{ "ZoneName." . $count } = $zone_name;
+            $count++;
+        }
+    }
 
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		my $availability_zones;
-		foreach my $az (@{$xml->{availabilityZoneInfo}{item}}) {
-			my $availability_zone_messages;
-			# Create the messages for this zone
-			foreach my $azm (@{$az->{messageSet}{item}}) {
-				my $availability_zone_message = Net::Amazon::EC2::AvailabilityZoneMessage->new(
-					message => $azm->{message},
-				);
-				
-				push @$availability_zone_messages, $availability_zone_message;
-			}
-			
-			my $availability_zone = Net::Amazon::EC2::AvailabilityZone->new(
-				zone_name	=> $az->{zoneName},
-				zone_state	=> $az->{zoneState},
-				region_name	=> $az->{regionName},
-				messages	=> $availability_zone_messages,
-			);
-			
-			push @$availability_zones, $availability_zone;
-		}
-		
-		return $availability_zones;
-	}
+    my $xml = $self->_sign( Action => 'DescribeAvailabilityZones', %args );
+
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        my $availability_zones;
+        foreach my $az ( @{ $xml->{availabilityZoneInfo}{item} } ) {
+            my $availability_zone_messages;
+
+            # Create the messages for this zone
+            foreach my $azm ( @{ $az->{messageSet}{item} } ) {
+                my $availability_zone_message =
+                  Net::Amazon::EC2::AvailabilityZoneMessage->new(
+                    message => $azm->{message}, );
+
+                push @$availability_zone_messages, $availability_zone_message;
+            }
+
+            my $availability_zone = Net::Amazon::EC2::AvailabilityZone->new(
+                zone_name   => $az->{zoneName},
+                zone_state  => $az->{zoneState},
+                region_name => $az->{regionName},
+                messages    => $availability_zone_messages,
+            );
+
+            push @$availability_zones, $availability_zone;
+        }
+
+        return $availability_zones;
+    }
 }
 
 =head2 describe_bundle_tasks(%params)
@@ -1587,41 +1638,40 @@ Returns a array ref of Net::Amazon::EC2::BundleInstanceResponse objects
 =cut
 
 sub describe_bundle_tasks {
-	my $self = shift;
-	my %args = validate( @_, {
-		'BundleId'							=> { type => SCALAR, optional => 1 },
-	});
+    my $self = shift;
+    my %args =
+      validate( @_, { 'BundleId' => { type => SCALAR, optional => 1 }, } );
 
-	my $xml = $self->_sign(Action  => 'DescribeBundleTasks', %args);
-	
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		my $bundle_tasks;
-		
-		foreach my $item (@{$xml->{bundleInstanceTasksSet}{item}}) {
-			my $bundle = Net::Amazon::EC2::BundleInstanceResponse->new(
-				instance_id					=> $item->{instanceId},
-				bundle_id					=> $item->{bundleId},
-				state						=> $item->{state},
-				start_time					=> $item->{startTime},
-				update_time					=> $item->{updateTime},
-				progress					=> $item->{progress},
-				s3_bucket					=> $item->{storage}{S3}{bucket},
-				s3_prefix					=> $item->{storage}{S3}{bucket},
-				s3_aws_access_key_id		=> $item->{storage}{S3}{bucket},
-				s3_upload_policy			=> $item->{storage}{S3}{bucket},
-				s3_policy_upload_signature	=> $item->{storage}{S3}{bucket},
-				bundle_error_code			=> $item->{error}{code},
-				bundle_error_message		=> $item->{error}{message},
-			);
-			
-			push @$bundle_tasks, $bundle;
-		}
-				
-		return $bundle_tasks;
-	}
+    my $xml = $self->_sign( Action => 'DescribeBundleTasks', %args );
+
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        my $bundle_tasks;
+
+        foreach my $item ( @{ $xml->{bundleInstanceTasksSet}{item} } ) {
+            my $bundle = Net::Amazon::EC2::BundleInstanceResponse->new(
+                instance_id                => $item->{instanceId},
+                bundle_id                  => $item->{bundleId},
+                state                      => $item->{state},
+                start_time                 => $item->{startTime},
+                update_time                => $item->{updateTime},
+                progress                   => $item->{progress},
+                s3_bucket                  => $item->{storage}{S3}{bucket},
+                s3_prefix                  => $item->{storage}{S3}{bucket},
+                s3_aws_access_key_id       => $item->{storage}{S3}{bucket},
+                s3_upload_policy           => $item->{storage}{S3}{bucket},
+                s3_policy_upload_signature => $item->{storage}{S3}{bucket},
+                bundle_error_code          => $item->{error}{code},
+                bundle_error_message       => $item->{error}{message},
+            );
+
+            push @$bundle_tasks, $bundle;
+        }
+
+        return $bundle_tasks;
+    }
 }
 
 =head2 describe_image_attributes(%params)
@@ -1669,66 +1719,71 @@ AWS returns an invalid response. No response yet from Amazon on an ETA for getti
 =cut
 
 sub describe_image_attribute {
-	my $self = shift;
-	my %args = validate( @_, {
-								ImageId => { type => SCALAR },
-								Attribute => { type => SCALAR }
-	});
-		
-	my $xml = $self->_sign(Action  => 'DescribeImageAttribute', %args);
-	
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		my $launch_permissions;
-		my $product_codes;
-		my $block_device_mappings;
-		
-		if ( grep { defined && length } $xml->{launchPermission}{item} ) {
-			foreach my $lp (@{$xml->{launchPermission}{item}}) {
-				my $launch_permission = Net::Amazon::EC2::LaunchPermission->new(
-					group	=> $lp->{group},
-					user_id	=> $lp->{userId},
-				);
-				
-				push @$launch_permissions, $launch_permission;
-			}
-		}
+    my $self = shift;
+    my %args = validate(
+        @_,
+        {
+            ImageId   => { type => SCALAR },
+            Attribute => { type => SCALAR }
+        }
+    );
 
-		if ( grep { defined && length } $xml->{productCodes}{item} ) {
-			foreach my $pc (@{$xml->{productCodes}{item}}) {
-				my $product_code = Net::Amazon::EC2::ProductCode->new(
-					product_code	=> $pc->{productCode},
-				);
-				
-				push @$product_codes, $product_code;
-			}
-		}
-		
-		if ( grep { defined && length } $xml->{blockDeviceMapping}{item} ) {
-			foreach my $bd (@{$xml->{blockDeviceMapping}{item}}) {
-				my $block_device_mapping = Net::Amazon::EC2::BlockDeviceMapping->new(
-					virtual_name	=> $bd->{virtualName},
-					device_name		=> $bd->{deviceName},
-				);
-				
-				push @$block_device_mappings, $block_device_mapping;
-			}
-		}
-		
-		my $describe_image_attribute = Net::Amazon::EC2::DescribeImageAttribute->new(
-			image_id			=> $xml->{imageId},
-			launch_permissions	=> $launch_permissions,
-			product_codes		=> $product_codes,
-			kernel				=> $xml->{kernel},
-			ramdisk				=> $xml->{ramdisk},
-			blockDeviceMapping	=> $block_device_mappings,
-			platform			=> $xml->{platform},
-		);
+    my $xml = $self->_sign( Action => 'DescribeImageAttribute', %args );
 
-		return $describe_image_attribute;
-	}
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        my $launch_permissions;
+        my $product_codes;
+        my $block_device_mappings;
+
+        if ( grep { defined && length } $xml->{launchPermission}{item} ) {
+            foreach my $lp ( @{ $xml->{launchPermission}{item} } ) {
+                my $launch_permission = Net::Amazon::EC2::LaunchPermission->new(
+                    group   => $lp->{group},
+                    user_id => $lp->{userId},
+                );
+
+                push @$launch_permissions, $launch_permission;
+            }
+        }
+
+        if ( grep { defined && length } $xml->{productCodes}{item} ) {
+            foreach my $pc ( @{ $xml->{productCodes}{item} } ) {
+                my $product_code =
+                  Net::Amazon::EC2::ProductCode->new(
+                    product_code => $pc->{productCode}, );
+
+                push @$product_codes, $product_code;
+            }
+        }
+
+        if ( grep { defined && length } $xml->{blockDeviceMapping}{item} ) {
+            foreach my $bd ( @{ $xml->{blockDeviceMapping}{item} } ) {
+                my $block_device_mapping =
+                  Net::Amazon::EC2::BlockDeviceMapping->new(
+                    virtual_name => $bd->{virtualName},
+                    device_name  => $bd->{deviceName},
+                  );
+
+                push @$block_device_mappings, $block_device_mapping;
+            }
+        }
+
+        my $describe_image_attribute =
+          Net::Amazon::EC2::DescribeImageAttribute->new(
+            image_id           => $xml->{imageId},
+            launch_permissions => $launch_permissions,
+            product_codes      => $product_codes,
+            kernel             => $xml->{kernel},
+            ramdisk            => $xml->{ramdisk},
+            blockDeviceMapping => $block_device_mappings,
+            platform           => $xml->{platform},
+          );
+
+        return $describe_image_attribute;
+    }
 }
 
 =head2 describe_images(%params)
@@ -1756,137 +1811,143 @@ Returns an array ref of Net::Amazon::EC2::DescribeImagesResponse objects
 =cut
 
 sub describe_images {
-	my $self = shift;
-	my %args = validate( @_, {
-		ImageId			=> { type => SCALAR | ARRAYREF, optional => 1 },
-		Owner			=> { type => SCALAR | ARRAYREF, optional => 1 },
-		ExecutableBy	=> { type => SCALAR | ARRAYREF, optional => 1 },
-	});
-	
-	# If we have a array ref of instances lets split them out into their ImageId.n format
-	if (ref ($args{ImageId}) eq 'ARRAY') {
-		my $image_ids	= delete $args{ImageId};
-		my $count		= 1;
-		foreach my $image_id (@{$image_ids}) {
-			$args{"ImageId." . $count} = $image_id;
-			$count++;
-		}
-	}
-	
-	# If we have a array ref of instances lets split them out into their Owner.n format
-	if (ref ($args{Owner}) eq 'ARRAY') {
-		my $owners	= delete $args{Owner};
-		my $count	= 1;
-		foreach my $owner (@{$owners}) {
-			$args{"Owner." . $count} = $owner;
-			$count++;
-		}
-	}
+    my $self = shift;
+    my %args = validate(
+        @_,
+        {
+            ImageId      => { type => SCALAR | ARRAYREF, optional => 1 },
+            Owner        => { type => SCALAR | ARRAYREF, optional => 1 },
+            ExecutableBy => { type => SCALAR | ARRAYREF, optional => 1 },
+        }
+    );
 
-	# If we have a array ref of instances lets split them out into their ExecutableBy.n format
-	if (ref ($args{ExecutableBy}) eq 'ARRAY') {
-		my $executors	= delete $args{ExecutableBy};
-		my $count		= 1;
-		foreach my $executor (@{$executors}) {
-			$args{"ExecutableBy." . $count} = $executor;
-			$count++;
-		}
-	}
+# If we have a array ref of instances lets split them out into their ImageId.n format
+    if ( ref( $args{ImageId} ) eq 'ARRAY' ) {
+        my $image_ids = delete $args{ImageId};
+        my $count     = 1;
+        foreach my $image_id ( @{$image_ids} ) {
+            $args{ "ImageId." . $count } = $image_id;
+            $count++;
+        }
+    }
 
-	my $xml = $self->_sign(Action  => 'DescribeImages', %args);
-	
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		my $images;
-		
-		foreach my $item (@{$xml->{imagesSet}{item}}) {
-			my $product_codes;
-			my $state_reason;
-			my $block_device_mappings;
-			
-			if ( grep { defined && length } $item->{stateReason} ) {
-				$state_reason = Net::Amazon::EC2::StateReason->new(
-					code	=> $item->{stateReason}{code},
-					message	=> $item->{stateReason}{message},
-				);
-			}
+# If we have a array ref of instances lets split them out into their Owner.n format
+    if ( ref( $args{Owner} ) eq 'ARRAY' ) {
+        my $owners = delete $args{Owner};
+        my $count  = 1;
+        foreach my $owner ( @{$owners} ) {
+            $args{ "Owner." . $count } = $owner;
+            $count++;
+        }
+    }
 
-			if ( grep { defined && length } $item->{blockDeviceMapping} ) {
-				foreach my $bdm ( @{$item->{blockDeviceMapping}{item}} ) {
-					my $virtual_name;
-					my $no_device;
-					my $ebs_block_device_mapping;
-					
-					if ( grep { defined && length } $bdm->{ebs} ) {
-						$ebs_block_device_mapping = Net::Amazon::EC2::EbsBlockDevice->new(
-							snapshot_id				=> $bdm->{ebs}{snapshotId},
-							volume_size				=> $bdm->{ebs}{volumeSize},
-							delete_on_termination	=> $bdm->{ebs}{deleteOnTermination},							
-						);
-					}
-					
-					
-					my $block_device_mapping = Net::Amazon::EC2::BlockDeviceMapping->new(
-						device_name		=> $bdm->{deviceName},
-						virtual_name	=> $virtual_name,
-						ebs				=> $ebs_block_device_mapping,
-						no_device		=> $no_device,
-					);
-					push @$block_device_mappings, $block_device_mapping;
-				}
-			}
-			$item->{description} = undef if ref ($item->{description});
+# If we have a array ref of instances lets split them out into their ExecutableBy.n format
+    if ( ref( $args{ExecutableBy} ) eq 'ARRAY' ) {
+        my $executors = delete $args{ExecutableBy};
+        my $count     = 1;
+        foreach my $executor ( @{$executors} ) {
+            $args{ "ExecutableBy." . $count } = $executor;
+            $count++;
+        }
+    }
 
-			my $tag_sets;
-			foreach my $tag_arr (@{$item->{tagSet}{item}}) {
+    my $xml = $self->_sign( Action => 'DescribeImages', %args );
+
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        my $images;
+
+        foreach my $item ( @{ $xml->{imagesSet}{item} } ) {
+            my $product_codes;
+            my $state_reason;
+            my $block_device_mappings;
+
+            if ( grep { defined && length } $item->{stateReason} ) {
+                $state_reason = Net::Amazon::EC2::StateReason->new(
+                    code    => $item->{stateReason}{code},
+                    message => $item->{stateReason}{message},
+                );
+            }
+
+            if ( grep { defined && length } $item->{blockDeviceMapping} ) {
+                foreach my $bdm ( @{ $item->{blockDeviceMapping}{item} } ) {
+                    my $virtual_name;
+                    my $no_device;
+                    my $ebs_block_device_mapping;
+
+                    if ( grep { defined && length } $bdm->{ebs} ) {
+                        $ebs_block_device_mapping =
+                          Net::Amazon::EC2::EbsBlockDevice->new(
+                            snapshot_id => $bdm->{ebs}{snapshotId},
+                            volume_size => $bdm->{ebs}{volumeSize},
+                            delete_on_termination =>
+                              $bdm->{ebs}{deleteOnTermination},
+                          );
+                    }
+
+                    my $block_device_mapping =
+                      Net::Amazon::EC2::BlockDeviceMapping->new(
+                        device_name  => $bdm->{deviceName},
+                        virtual_name => $virtual_name,
+                        ebs          => $ebs_block_device_mapping,
+                        no_device    => $no_device,
+                      );
+                    push @$block_device_mappings, $block_device_mapping;
+                }
+            }
+            $item->{description} = undef if ref( $item->{description} );
+
+            my $tag_sets;
+            foreach my $tag_arr ( @{ $item->{tagSet}{item} } ) {
                 if ( ref $tag_arr->{value} eq "HASH" ) {
                     $tag_arr->{value} = "";
                 }
-				my $tag = Net::Amazon::EC2::TagSet->new(
-					key => $tag_arr->{key},
-					value => $tag_arr->{value},
-				);
-				push @$tag_sets, $tag;
-			}
+                my $tag = Net::Amazon::EC2::TagSet->new(
+                    key   => $tag_arr->{key},
+                    value => $tag_arr->{value},
+                );
+                push @$tag_sets, $tag;
+            }
 
-			my $image = Net::Amazon::EC2::DescribeImagesResponse->new(
-				image_id				=> $item->{imageId},
-				image_owner_id			=> $item->{imageOwnerId},
-				image_state				=> $item->{imageState},
-				is_public				=> $item->{isPublic},
-				image_location			=> $item->{imageLocation},
-				architecture			=> $item->{architecture},
-				image_type				=> $item->{imageType},
-				kernel_id				=> $item->{kernelId},
-				ramdisk_id				=> $item->{ramdiskId},
-				platform				=> $item->{platform},
-				state_reason			=> $state_reason,
-				image_owner_alias		=> $item->{imageOwnerAlias},
-				name					=> $item->{name},
-				description				=> $item->{description},
-				root_device_type		=> $item->{rootDeviceType},
-				root_device_name		=> $item->{rootDeviceName},
-				block_device_mapping	=> $block_device_mappings,
-				tag_set			        => $tag_sets,
-			);
-			
-			if (grep { defined && length } $item->{productCodes} ) {
-				foreach my $pc (@{$item->{productCodes}{item}}) {
-					my $product_code = Net::Amazon::EC2::ProductCode->new( product_code => $pc->{productCode} );
-					push @$product_codes, $product_code;
-				}
-				
-				$image->product_codes($product_codes);
-			}
+            my $image = Net::Amazon::EC2::DescribeImagesResponse->new(
+                image_id             => $item->{imageId},
+                image_owner_id       => $item->{imageOwnerId},
+                image_state          => $item->{imageState},
+                is_public            => $item->{isPublic},
+                image_location       => $item->{imageLocation},
+                architecture         => $item->{architecture},
+                image_type           => $item->{imageType},
+                kernel_id            => $item->{kernelId},
+                ramdisk_id           => $item->{ramdiskId},
+                platform             => $item->{platform},
+                state_reason         => $state_reason,
+                image_owner_alias    => $item->{imageOwnerAlias},
+                name                 => $item->{name},
+                description          => $item->{description},
+                root_device_type     => $item->{rootDeviceType},
+                root_device_name     => $item->{rootDeviceName},
+                block_device_mapping => $block_device_mappings,
+                tag_set              => $tag_sets,
+            );
 
-			
-			push @$images, $image;
-		}
-				
-		return $images;
-	}
+            if ( grep { defined && length } $item->{productCodes} ) {
+                foreach my $pc ( @{ $item->{productCodes}{item} } ) {
+                    my $product_code =
+                      Net::Amazon::EC2::ProductCode->new(
+                        product_code => $pc->{productCode} );
+                    push @$product_codes, $product_code;
+                }
+
+                $image->product_codes($product_codes);
+            }
+
+            push @$images, $image;
+        }
+
+        return $images;
+    }
 }
 
 =head2 describe_instances(%params)
@@ -1912,192 +1973,232 @@ Returns an array ref of Net::Amazon::EC2::ReservationInfo objects
 =cut
 
 sub describe_instances {
-	my $self = shift;
-	my %args = validate( @_, {
-		InstanceId	=> { type => SCALAR | ARRAYREF, optional => 1 },
-		Filter		=> { type => ARRAYREF, optional => 1 },
-	});
-	
-	# If we have a array ref of instances lets split them out into their InstanceId.n format
-	if (ref ($args{InstanceId}) eq 'ARRAY') {
-		my $instance_ids	= delete $args{InstanceId};
-		my $count			= 1;
-		foreach my $instance_id (@{$instance_ids}) {
-			$args{"InstanceId." . $count} = $instance_id;
-			$count++;
-		}
-	}
+    my $self = shift;
+    my %args = validate(
+        @_,
+        {
+            InstanceId => { type => SCALAR | ARRAYREF, optional => 1 },
+            Filter     => { type => ARRAYREF,          optional => 1 },
+        }
+    );
 
-	$self->_build_filters(\%args);
-	my $xml = $self->_sign(Action  => 'DescribeInstances', %args);
-	my $reservations;
-	
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		foreach my $reservation_set (@{$xml->{reservationSet}{item}}) {
-			my $group_sets=[];
-			foreach my $group_arr (@{$reservation_set->{groupSet}{item}}) {
-				my $group = Net::Amazon::EC2::GroupSet->new(
-					group_id => $group_arr->{groupId},
-					group_name => $group_arr->{groupName},
-				);
-				push @$group_sets, $group;
-			}
-	
-			my $running_instances;
-			foreach my $instance_elem (@{$reservation_set->{instancesSet}{item}}) {
-				my $instance_state_type = Net::Amazon::EC2::InstanceState->new(
-					code	=> $instance_elem->{instanceState}{code},
-					name	=> $instance_elem->{instanceState}{name},
-				);
-				
-				my $product_codes;
-				my $block_device_mappings;
-				my $state_reason;
-            my $network_interfaces_set;
-				
-				if (grep { defined && length } $instance_elem->{productCodes} ) {
-					foreach my $pc (@{$instance_elem->{productCodes}{item}}) {
-						my $product_code = Net::Amazon::EC2::ProductCode->new( product_code => $pc->{productCode} );
-						push @$product_codes, $product_code;
-					}
-				}
+# If we have a array ref of instances lets split them out into their InstanceId.n format
+    if ( ref( $args{InstanceId} ) eq 'ARRAY' ) {
+        my $instance_ids = delete $args{InstanceId};
+        my $count        = 1;
+        foreach my $instance_id ( @{$instance_ids} ) {
+            $args{ "InstanceId." . $count } = $instance_id;
+            $count++;
+        }
+    }
 
-            if ( grep { defined && length } $instance_elem->{networkInterfaceSet} ) {
-               foreach my $interface( @{$instance_elem->{networkInterfaceSet}{item}} ) {
-                  my $network_interface = Net::Amazon::EC2::NetworkInterfaceSet->new(
-                     network_interface_id => $interface->{networkInterfaceId},
-                     subnet_id            => $interface->{subnetId},
-                     vpc_id               => $interface->{vpcId},
-                     description          => $interface->{description},
-                     status               => $interface->{status},
-                     mac_address          => $interface->{macAddress},
-                     private_ip_address   => $interface->{privateIpAddress},
-                  );
+    $self->_build_filters( \%args );
+    my $xml = $self->_sign( Action => 'DescribeInstances', %args );
+    my $reservations;
 
-                  if ( grep { defined && length } $interface->{groupSet} ) {
-                     my $groups_set = [];
-                     foreach my $group( @{$interface->{groupSet}{item}} ) {
-                        my $group = Net::Amazon::EC2::GroupSet->new(
-                           group_id   => $group->{groupId},
-                           group_name => $group->{groupName},
-                        );
-                        push @$groups_set, $group;
-                     }
-
-                     $network_interface->{group_sets} = $groups_set;
-                  }
-
-                  push @$network_interfaces_set, $network_interface;
-               }
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        foreach my $reservation_set ( @{ $xml->{reservationSet}{item} } ) {
+            my $group_sets = [];
+            foreach my $group_arr ( @{ $reservation_set->{groupSet}{item} } ) {
+                my $group = Net::Amazon::EC2::GroupSet->new(
+                    group_id   => $group_arr->{groupId},
+                    group_name => $group_arr->{groupName},
+                );
+                push @$group_sets, $group;
             }
 
-				if ( grep { defined && length } $instance_elem->{blockDeviceMapping} ) {
-					foreach my $bdm ( @{$instance_elem->{blockDeviceMapping}{item}} ) {
-						my $ebs_block_device_mapping = Net::Amazon::EC2::EbsInstanceBlockDeviceMapping->new(
-							volume_id				=> $bdm->{ebs}{volumeId},
-							status					=> $bdm->{ebs}{status},
-							attach_time				=> $bdm->{ebs}{attachTime},
-							delete_on_termination	=> $bdm->{ebs}{deleteOnTermination},							
-						);
-						
-						my $block_device_mapping = Net::Amazon::EC2::BlockDeviceMapping->new(
-							ebs						=> $ebs_block_device_mapping,
-							device_name				=> $bdm->{deviceName},
-						);
-						push @$block_device_mappings, $block_device_mapping;
-					}
-				}
+            my $running_instances;
+            foreach
+              my $instance_elem ( @{ $reservation_set->{instancesSet}{item} } )
+            {
+                my $instance_state_type = Net::Amazon::EC2::InstanceState->new(
+                    code => $instance_elem->{instanceState}{code},
+                    name => $instance_elem->{instanceState}{name},
+                );
 
-				if ( grep { defined && length } $instance_elem->{stateReason} ) {
-					$state_reason = Net::Amazon::EC2::StateReason->new(
-						code	=> $instance_elem->{stateReason}{code},
-						message	=> $instance_elem->{stateReason}{message},
-					);
-				}
-				
-				unless ( grep { defined && length } $instance_elem->{reason} and ref $instance_elem->{reason} ne 'HASH' ) {
-					$instance_elem->{reason} = undef;
-				}
-						
-				unless ( grep { defined && length } $instance_elem->{privateDnsName} and ref $instance_elem->{privateDnsName} ne 'HASH' ) {
-					$instance_elem->{privateDnsName} = undef;
-				}
-									
-				unless ( grep { defined && length } $instance_elem->{dnsName} and ref $instance_elem->{dnsName} ne 'HASH' ) {
-					$instance_elem->{dnsName} = undef;
-				}
+                my $product_codes;
+                my $block_device_mappings;
+                my $state_reason;
+                my $network_interfaces_set;
 
-				unless ( grep { defined && length } $instance_elem->{placement}{availabilityZone} and ref $instance_elem->{placement}{availabilityZone} ne 'HASH' ) {
-					$instance_elem->{placement}{availabilityZone} = undef;
-				}
-				
-				my $placement_response = Net::Amazon::EC2::PlacementResponse->new( availability_zone => $instance_elem->{placement}{availabilityZone} );
+                if ( grep { defined && length } $instance_elem->{productCodes} )
+                {
+                    foreach my $pc ( @{ $instance_elem->{productCodes}{item} } )
+                    {
+                        my $product_code =
+                          Net::Amazon::EC2::ProductCode->new(
+                            product_code => $pc->{productCode} );
+                        push @$product_codes, $product_code;
+                    }
+                }
 
-				my $tag_sets;
-				foreach my $tag_arr (@{$instance_elem->{tagSet}{item}}) {
+                if ( grep { defined && length }
+                    $instance_elem->{networkInterfaceSet} )
+                {
+                    foreach my $interface (
+                        @{ $instance_elem->{networkInterfaceSet}{item} } )
+                    {
+                        my $network_interface =
+                          Net::Amazon::EC2::NetworkInterfaceSet->new(
+                            network_interface_id =>
+                              $interface->{networkInterfaceId},
+                            subnet_id   => $interface->{subnetId},
+                            vpc_id      => $interface->{vpcId},
+                            description => $interface->{description},
+                            status      => $interface->{status},
+                            mac_address => $interface->{macAddress},
+                            private_ip_address =>
+                              $interface->{privateIpAddress},
+                          );
+
+                        if ( grep { defined && length } $interface->{groupSet} )
+                        {
+                            my $groups_set = [];
+                            foreach
+                              my $group ( @{ $interface->{groupSet}{item} } )
+                            {
+                                my $group = Net::Amazon::EC2::GroupSet->new(
+                                    group_id   => $group->{groupId},
+                                    group_name => $group->{groupName},
+                                );
+                                push @$groups_set, $group;
+                            }
+
+                            $network_interface->{group_sets} = $groups_set;
+                        }
+
+                        push @$network_interfaces_set, $network_interface;
+                    }
+                }
+
+                if ( grep { defined && length }
+                    $instance_elem->{blockDeviceMapping} )
+                {
+                    foreach my $bdm (
+                        @{ $instance_elem->{blockDeviceMapping}{item} } )
+                    {
+                        my $ebs_block_device_mapping =
+                          Net::Amazon::EC2::EbsInstanceBlockDeviceMapping->new(
+                            volume_id   => $bdm->{ebs}{volumeId},
+                            status      => $bdm->{ebs}{status},
+                            attach_time => $bdm->{ebs}{attachTime},
+                            delete_on_termination =>
+                              $bdm->{ebs}{deleteOnTermination},
+                          );
+
+                        my $block_device_mapping =
+                          Net::Amazon::EC2::BlockDeviceMapping->new(
+                            ebs         => $ebs_block_device_mapping,
+                            device_name => $bdm->{deviceName},
+                          );
+                        push @$block_device_mappings, $block_device_mapping;
+                    }
+                }
+
+                if ( grep { defined && length } $instance_elem->{stateReason} )
+                {
+                    $state_reason = Net::Amazon::EC2::StateReason->new(
+                        code    => $instance_elem->{stateReason}{code},
+                        message => $instance_elem->{stateReason}{message},
+                    );
+                }
+
+                unless ( grep { defined && length } $instance_elem->{reason}
+                    and ref $instance_elem->{reason} ne 'HASH' )
+                {
+                    $instance_elem->{reason} = undef;
+                }
+
+                unless ( grep { defined && length }
+                    $instance_elem->{privateDnsName}
+                    and ref $instance_elem->{privateDnsName} ne 'HASH' )
+                {
+                    $instance_elem->{privateDnsName} = undef;
+                }
+
+                unless ( grep { defined && length } $instance_elem->{dnsName}
+                    and ref $instance_elem->{dnsName} ne 'HASH' )
+                {
+                    $instance_elem->{dnsName} = undef;
+                }
+
+                unless ( grep { defined && length }
+                    $instance_elem->{placement}{availabilityZone}
+                    and ref $instance_elem->{placement}{availabilityZone} ne
+                    'HASH' )
+                {
+                    $instance_elem->{placement}{availabilityZone} = undef;
+                }
+
+                my $placement_response =
+                  Net::Amazon::EC2::PlacementResponse->new( availability_zone =>
+                      $instance_elem->{placement}{availabilityZone} );
+
+                my $tag_sets;
+                foreach my $tag_arr ( @{ $instance_elem->{tagSet}{item} } ) {
                     if ( ref $tag_arr->{value} eq "HASH" ) {
                         $tag_arr->{value} = "";
                     }
-					my $tag = Net::Amazon::EC2::TagSet->new(
-						key => $tag_arr->{key},
-						value => $tag_arr->{value},
-					);
-					push @$tag_sets, $tag;
-				}
+                    my $tag = Net::Amazon::EC2::TagSet->new(
+                        key   => $tag_arr->{key},
+                        value => $tag_arr->{value},
+                    );
+                    push @$tag_sets, $tag;
+                }
 
-				my $running_instance = Net::Amazon::EC2::RunningInstances->new(
-					ami_launch_index		=> $instance_elem->{amiLaunchIndex},
-					dns_name				=> $instance_elem->{dnsName},
-					image_id				=> $instance_elem->{imageId},
-					kernel_id				=> $instance_elem->{kernelId},
-					ramdisk_id				=> $instance_elem->{ramdiskId},
-					instance_id				=> $instance_elem->{instanceId},
-					instance_state			=> $instance_state_type,
-					instance_type			=> $instance_elem->{instanceType},
-					key_name				=> $instance_elem->{keyName},
-					launch_time				=> $instance_elem->{launchTime},
-					placement				=> $placement_response,
-					private_dns_name		=> $instance_elem->{privateDnsName},
-					reason					=> $instance_elem->{reason},
-					platform				=> $instance_elem->{platform},
-					monitoring				=> $instance_elem->{monitoring}{state},
-					subnet_id				=> $instance_elem->{subnetId},
-					vpc_id					=> $instance_elem->{vpcId},
-					private_ip_address		=> $instance_elem->{privateIpAddress},
-					ip_address				=> $instance_elem->{ipAddress},
-					architecture			=> $instance_elem->{architecture},
-					root_device_name		=> $instance_elem->{rootDeviceName},
-					root_device_type		=> $instance_elem->{rootDeviceType},
-					block_device_mapping	=> $block_device_mappings,
-					state_reason			=> $state_reason,
-					tag_set					=> $tag_sets,
-               network_interface_set => $network_interfaces_set,
-				);
+                my $running_instance = Net::Amazon::EC2::RunningInstances->new(
+                    ami_launch_index     => $instance_elem->{amiLaunchIndex},
+                    dns_name             => $instance_elem->{dnsName},
+                    image_id             => $instance_elem->{imageId},
+                    kernel_id            => $instance_elem->{kernelId},
+                    ramdisk_id           => $instance_elem->{ramdiskId},
+                    instance_id          => $instance_elem->{instanceId},
+                    instance_state       => $instance_state_type,
+                    instance_type        => $instance_elem->{instanceType},
+                    key_name             => $instance_elem->{keyName},
+                    launch_time          => $instance_elem->{launchTime},
+                    placement            => $placement_response,
+                    private_dns_name     => $instance_elem->{privateDnsName},
+                    reason               => $instance_elem->{reason},
+                    platform             => $instance_elem->{platform},
+                    monitoring           => $instance_elem->{monitoring}{state},
+                    subnet_id            => $instance_elem->{subnetId},
+                    vpc_id               => $instance_elem->{vpcId},
+                    private_ip_address   => $instance_elem->{privateIpAddress},
+                    ip_address           => $instance_elem->{ipAddress},
+                    architecture         => $instance_elem->{architecture},
+                    root_device_name     => $instance_elem->{rootDeviceName},
+                    root_device_type     => $instance_elem->{rootDeviceType},
+                    block_device_mapping => $block_device_mappings,
+                    state_reason         => $state_reason,
+                    tag_set              => $tag_sets,
+                    network_interface_set => $network_interfaces_set,
+                );
 
-				if ($product_codes) {
-					$running_instance->product_codes($product_codes);
-				}
-				
-				push @$running_instances, $running_instance;
-			}
-						
-			my $reservation = Net::Amazon::EC2::ReservationInfo->new(
-				reservation_id	=> $reservation_set->{reservationId},
-				owner_id		=> $reservation_set->{ownerId},
-				group_set		=> $group_sets,
-				instances_set	=> $running_instances,
-				requester_id	=> $reservation_set->{requesterId},
-			);
-			
-			push @$reservations, $reservation;
-		}
-			
-	}
+                if ($product_codes) {
+                    $running_instance->product_codes($product_codes);
+                }
 
-	return $reservations;
+                push @$running_instances, $running_instance;
+            }
+
+            my $reservation = Net::Amazon::EC2::ReservationInfo->new(
+                reservation_id => $reservation_set->{reservationId},
+                owner_id       => $reservation_set->{ownerId},
+                group_set      => $group_sets,
+                instances_set  => $running_instances,
+                requester_id   => $reservation_set->{requesterId},
+            );
+
+            push @$reservations, $reservation;
+        }
+
+    }
+
+    return $reservations;
 }
 
 =head2 describe_classic_link_instances(%params)
@@ -2123,46 +2224,49 @@ Returns an array ref of Net::Amazon::EC2::ReservationInfo objects
 =cut
 
 sub describe_classic_link_instances {
-	my $self = shift;
-	my %args = validate( @_, {
-		InstanceId	=> { type => SCALAR | ARRAYREF, optional => 1 },
-		Filter		=> { type => ARRAYREF, optional => 1 },
-	});
-	
-	# If we have a array ref of instances lets split them out into their InstanceId.n format
-	if (ref ($args{InstanceId}) eq 'ARRAY') {
-		my $instance_ids	= delete $args{InstanceId};
-		my $count			= 1;
-		foreach my $instance_id (@{$instance_ids}) {
-			$args{"InstanceId." . $count} = $instance_id;
-			$count++;
-		}
-	}
+    my $self = shift;
+    my %args = validate(
+        @_,
+        {
+            InstanceId => { type => SCALAR | ARRAYREF, optional => 1 },
+            Filter     => { type => ARRAYREF,          optional => 1 },
+        }
+    );
 
-	$self->_build_filters(\%args);
-	my $xml = $self->_sign(Action  => 'DescribeClassicLinkInstances', %args);
-	my $reservations;
-	
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-        foreach my $instance_elem ( @{$xml->{instancesSet}->{item}} ) {
-            my ($tag_sets, $group_sets) = [];
-            foreach my $tag_arr (@{$instance_elem->{tagSet}{item}}) {
+# If we have a array ref of instances lets split them out into their InstanceId.n format
+    if ( ref( $args{InstanceId} ) eq 'ARRAY' ) {
+        my $instance_ids = delete $args{InstanceId};
+        my $count        = 1;
+        foreach my $instance_id ( @{$instance_ids} ) {
+            $args{ "InstanceId." . $count } = $instance_id;
+            $count++;
+        }
+    }
+
+    $self->_build_filters( \%args );
+    my $xml = $self->_sign( Action => 'DescribeClassicLinkInstances', %args );
+    my $reservations;
+
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        foreach my $instance_elem ( @{ $xml->{instancesSet}->{item} } ) {
+            my ( $tag_sets, $group_sets ) = [];
+            foreach my $tag_arr ( @{ $instance_elem->{tagSet}{item} } ) {
                 if ( ref $tag_arr->{value} eq "HASH" ) {
                     $tag_arr->{value} = "";
                 }
                 my $tag = Net::Amazon::EC2::TagSet->new(
-                    key => $tag_arr->{key},
+                    key   => $tag_arr->{key},
                     value => $tag_arr->{value},
                 );
                 push @$tag_sets, $tag;
             }
-            foreach my $group_arr (@{$instance_elem->{groupSet}{item}}) {
-                my $group = Net::Amazon::EC2::GroupSet->new(
-                    group_id => $group_arr->{groupId},
-                );
+            foreach my $group_arr ( @{ $instance_elem->{groupSet}{item} } ) {
+                my $group =
+                  Net::Amazon::EC2::GroupSet->new(
+                    group_id => $group_arr->{groupId}, );
                 push @$group_sets, $group;
             }
 
@@ -2174,7 +2278,7 @@ sub describe_classic_link_instances {
             );
             push @$reservations, $reservation;
         }
-	}
+    }
     return $reservations;
 }
 
@@ -2207,8 +2311,8 @@ sub describe_instance_status {
         {
             InstanceId => { type => SCALAR | ARRAYREF, optional => 1 },
             Filter     => { type => ARRAYREF,          optional => 1 },
-            MaxResults => { type => SCALAR, optional => 1 },
-            NextToken  => { type => SCALAR, optional => 1 },
+            MaxResults => { type => SCALAR,            optional => 1 },
+            NextToken  => { type => SCALAR,            optional => 1 },
         }
     );
 
@@ -2234,23 +2338,28 @@ sub describe_instance_status {
     else {
         foreach my $instancestatus_elem ( @{ $xml->{instanceStatusSet}{item} } )
         {
-            my $instance_status = $self->_create_describe_instance_status( $instancestatus_elem );
+            my $instance_status =
+              $self->_create_describe_instance_status($instancestatus_elem);
             push @$instancestatuses, $instance_status;
         }
 
         if ( grep { defined && length } $xml->{nextToken} ) {
             $token = $xml->{nextToken};
-            while(1) {
+            while (1) {
                 $args{NextToken} = $token;
                 $self->_build_filters( \%args );
-                my $tmp_xml = $self->_sign( Action => 'DescribeInstanceStatus', %args );
+                my $tmp_xml =
+                  $self->_sign( Action => 'DescribeInstanceStatus', %args );
                 if ( grep { defined && length } $tmp_xml->{Errors} ) {
                     return $self->_parse_errors($tmp_xml);
                 }
                 else {
-                    foreach my $tmp_instancestatus_elem ( @{ $tmp_xml->{instanceStatusSet}{item} } )
+                    foreach my $tmp_instancestatus_elem (
+                        @{ $tmp_xml->{instanceStatusSet}{item} } )
                     {
-                        my $tmp_instance_status = $self->_create_describe_instance_status( $tmp_instancestatus_elem );
+                        my $tmp_instance_status =
+                          $self->_create_describe_instance_status(
+                            $tmp_instancestatus_elem);
                         push @$instancestatuses, $tmp_instance_status;
                     }
                     if ( grep { defined && length } $tmp_xml->{nextToken} ) {
@@ -2284,7 +2393,7 @@ Returns a Net::Amazon::EC2::InstanceStatuses object
 =cut
 
 sub _create_describe_instance_status {
-    my $self = shift;
+    my $self                = shift;
     my $instancestatus_elem = shift;
 
     my $group_sets = [];
@@ -2294,9 +2403,7 @@ sub _create_describe_instance_status {
         name => $instancestatus_elem->{instanceState}{name},
     );
 
-    foreach
-      my $events_arr ( @{ $instancestatus_elem->{eventsSet}{item} } )
-    {
+    foreach my $events_arr ( @{ $instancestatus_elem->{eventsSet}{item} } ) {
         my $events;
         if ( grep { defined && length } $events_arr->{notAfter} ) {
             $events = Net::Amazon::EC2::Events->new(
@@ -2317,9 +2424,7 @@ sub _create_describe_instance_status {
     }
 
     my $instancestatus_istatus;
-    if ( grep { defined && length }
-        $instancestatus_elem->{instanceStatus} )
-    {
+    if ( grep { defined && length } $instancestatus_elem->{instanceStatus} ) {
         my $details_set = [];
         foreach my $details_arr (
             @{ $instancestatus_elem->{instanceStatus}{details}{item} } )
@@ -2330,17 +2435,14 @@ sub _create_describe_instance_status {
             );
             push @$details_set, $details;
         }
-        $instancestatus_istatus =
-          Net::Amazon::EC2::InstanceStatus->new(
+        $instancestatus_istatus = Net::Amazon::EC2::InstanceStatus->new(
             status  => $instancestatus_elem->{instanceStatus}{status},
             details => $details_set,
-          );
+        );
     }
 
     my $instancestatus_sstatus;
-    if ( grep { defined && length }
-        $instancestatus_elem->{systemStatus} )
-    {
+    if ( grep { defined && length } $instancestatus_elem->{systemStatus} ) {
         my $details_set = [];
         foreach my $details_arr (
             @{ $instancestatus_elem->{systemStatus}{details}{item} } )
@@ -2411,91 +2513,105 @@ Returns a Net::Amazon::EC2::DescribeInstanceAttributeResponse object
 =cut
 
 sub describe_instance_attribute {
-	my $self = shift;
-	my %args = validate( @_, {
-		InstanceId	=> { type => SCALAR },
-		Attribute	=> { type => SCALAR },
-	});
-	
-	my $xml = $self->_sign(Action  => 'DescribeInstanceAttribute', %args);
+    my $self = shift;
+    my %args = validate(
+        @_,
+        {
+            InstanceId => { type => SCALAR },
+            Attribute  => { type => SCALAR },
+        }
+    );
 
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		my $attribute_response;
-		
-		# Test to see which type of attribute we are looking for, to dictacte 
-		# how to create the Net::Amazon::EC2::DescribeInstanceAttributeResponse object.
-		if ( $args{Attribute} eq 'instanceType' ) {
-			$attribute_response = Net::Amazon::EC2::DescribeInstanceAttributeResponse->new(
-				instance_id		=> $xml->{instanceId},
-				instance_type	=> $xml->{instanceType}{value},
-			);
-		}
-		elsif ( $args{Attribute} eq 'kernel' ) {
-			$attribute_response = Net::Amazon::EC2::DescribeInstanceAttributeResponse->new(
-				instance_id	=> $xml->{instanceId},
-				kernel		=> $xml->{kernel}{value},
-			);
-		}
-		elsif ( $args{Attribute} eq 'ramdisk' ) {
-			$attribute_response = Net::Amazon::EC2::DescribeInstanceAttributeResponse->new(
-				instance_id	=> $xml->{instanceId},
-				ramdisk		=> $xml->{ramdisk}{value},
-			);
-		}
-		elsif ( $args{Attribute} eq 'userData' ) {
-			$attribute_response = Net::Amazon::EC2::DescribeInstanceAttributeResponse->new(
-				instance_id	=> $xml->{instanceId},
-				user_data	=> $xml->{userData}{value},
-			);
-		}
-		elsif ( $args{Attribute} eq 'disableApiTermination' ) {
-			$attribute_response = Net::Amazon::EC2::DescribeInstanceAttributeResponse->new(
-				instance_id				=> $xml->{instanceId},
-				disable_api_termination	=> $xml->{disableApiTermination}{value},
-			);
-		}
-		elsif ( $args{Attribute} eq 'instanceInitiatedShutdownBehavior' ) {
-			$attribute_response = Net::Amazon::EC2::DescribeInstanceAttributeResponse->new(
-				instance_id								=> $xml->{instanceId},
-				instance_initiated_shutdown_behavior	=> $xml->{instanceInitiatedShutdownBehavior}{value},
-			);
-		}
-		elsif ( $args{Attribute} eq 'rootDeviceName' ) {
-			$attribute_response = Net::Amazon::EC2::DescribeInstanceAttributeResponse->new(
-				instance_id			=> $xml->{instanceId},
-				root_device_name	=> $xml->{rootDeviceName}{value},
-			);
-		}
-		elsif ( $args{Attribute} eq 'blockDeviceMapping' ) {
-			my $block_mappings;
-			foreach my $block_item (@{$xml->{blockDeviceMapping}{item}}) {
-				my $ebs_mapping				= Net::Amazon::EC2::EbsInstanceBlockDeviceMapping->new(
-					attach_time				=> $block_item->{ebs}{attachTime},
-					delete_on_termination	=> $block_item->{ebs}{deleteOnTermination},
-					status					=> $block_item->{ebs}{status},
-					volume_id				=> $block_item->{ebs}{volumeId},
-				);
-				my $block_device_mapping	= Net::Amazon::EC2::BlockDeviceMapping->new(
-					device_name	=> $block_item->{deviceName},
-					ebs			=> $ebs_mapping,
-				);
-				
-				push @$block_mappings, $block_device_mapping;
-			}
+    my $xml = $self->_sign( Action => 'DescribeInstanceAttribute', %args );
 
-			$attribute_response = Net::Amazon::EC2::DescribeInstanceAttributeResponse->new(
-				instance_id				=> $xml->{instanceId},
-				block_device_mapping	=> $block_mappings,
-			);
-		}
-		
-		return $attribute_response;
-	}
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        my $attribute_response;
+
+ # Test to see which type of attribute we are looking for, to dictacte
+ # how to create the Net::Amazon::EC2::DescribeInstanceAttributeResponse object.
+        if ( $args{Attribute} eq 'instanceType' ) {
+            $attribute_response =
+              Net::Amazon::EC2::DescribeInstanceAttributeResponse->new(
+                instance_id   => $xml->{instanceId},
+                instance_type => $xml->{instanceType}{value},
+              );
+        }
+        elsif ( $args{Attribute} eq 'kernel' ) {
+            $attribute_response =
+              Net::Amazon::EC2::DescribeInstanceAttributeResponse->new(
+                instance_id => $xml->{instanceId},
+                kernel      => $xml->{kernel}{value},
+              );
+        }
+        elsif ( $args{Attribute} eq 'ramdisk' ) {
+            $attribute_response =
+              Net::Amazon::EC2::DescribeInstanceAttributeResponse->new(
+                instance_id => $xml->{instanceId},
+                ramdisk     => $xml->{ramdisk}{value},
+              );
+        }
+        elsif ( $args{Attribute} eq 'userData' ) {
+            $attribute_response =
+              Net::Amazon::EC2::DescribeInstanceAttributeResponse->new(
+                instance_id => $xml->{instanceId},
+                user_data   => $xml->{userData}{value},
+              );
+        }
+        elsif ( $args{Attribute} eq 'disableApiTermination' ) {
+            $attribute_response =
+              Net::Amazon::EC2::DescribeInstanceAttributeResponse->new(
+                instance_id             => $xml->{instanceId},
+                disable_api_termination => $xml->{disableApiTermination}{value},
+              );
+        }
+        elsif ( $args{Attribute} eq 'instanceInitiatedShutdownBehavior' ) {
+            $attribute_response =
+              Net::Amazon::EC2::DescribeInstanceAttributeResponse->new(
+                instance_id => $xml->{instanceId},
+                instance_initiated_shutdown_behavior =>
+                  $xml->{instanceInitiatedShutdownBehavior}{value},
+              );
+        }
+        elsif ( $args{Attribute} eq 'rootDeviceName' ) {
+            $attribute_response =
+              Net::Amazon::EC2::DescribeInstanceAttributeResponse->new(
+                instance_id      => $xml->{instanceId},
+                root_device_name => $xml->{rootDeviceName}{value},
+              );
+        }
+        elsif ( $args{Attribute} eq 'blockDeviceMapping' ) {
+            my $block_mappings;
+            foreach my $block_item ( @{ $xml->{blockDeviceMapping}{item} } ) {
+                my $ebs_mapping =
+                  Net::Amazon::EC2::EbsInstanceBlockDeviceMapping->new(
+                    attach_time => $block_item->{ebs}{attachTime},
+                    delete_on_termination =>
+                      $block_item->{ebs}{deleteOnTermination},
+                    status    => $block_item->{ebs}{status},
+                    volume_id => $block_item->{ebs}{volumeId},
+                  );
+                my $block_device_mapping =
+                  Net::Amazon::EC2::BlockDeviceMapping->new(
+                    device_name => $block_item->{deviceName},
+                    ebs         => $ebs_mapping,
+                  );
+
+                push @$block_mappings, $block_device_mapping;
+            }
+
+            $attribute_response =
+              Net::Amazon::EC2::DescribeInstanceAttributeResponse->new(
+                instance_id          => $xml->{instanceId},
+                block_device_mapping => $block_mappings,
+              );
+        }
+
+        return $attribute_response;
+    }
 }
-
 
 =head2 describe_key_pairs(%params)
 
@@ -2514,40 +2630,40 @@ Returns an array ref of Net::Amazon::EC2::DescribeKeyPairsResponse objects
 =cut
 
 sub describe_key_pairs {
-	my $self = shift;
-	my %args = validate( @_, {
-		KeyName => { type => SCALAR | ARRAYREF, optional => 1 },
-	});
-	
-	# If we have a array ref of instances lets split them out into their InstanceId.n format
-	if (ref ($args{KeyName}) eq 'ARRAY') {
-		my $keynames	= delete $args{KeyName};
-		my $count		= 1;
-		foreach my $keyname (@{$keynames}) {
-			$args{"KeyName." . $count} = $keyname;
-			$count++;
-		}
-	}
-	
-	my $xml = $self->_sign(Action  => 'DescribeKeyPairs', %args);
+    my $self = shift;
+    my %args =
+      validate( @_,
+        { KeyName => { type => SCALAR | ARRAYREF, optional => 1 }, } );
 
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {	
-		my $key_pairs;
+# If we have a array ref of instances lets split them out into their InstanceId.n format
+    if ( ref( $args{KeyName} ) eq 'ARRAY' ) {
+        my $keynames = delete $args{KeyName};
+        my $count    = 1;
+        foreach my $keyname ( @{$keynames} ) {
+            $args{ "KeyName." . $count } = $keyname;
+            $count++;
+        }
+    }
 
-		foreach my $pair (@{$xml->{keySet}{item}}) {
-			my $key_pair = Net::Amazon::EC2::DescribeKeyPairsResponse->new(
-				key_name		=> $pair->{keyName},
-				key_fingerprint	=> $pair->{keyFingerprint},
-			);
-			
-			push @$key_pairs, $key_pair;
-		}
+    my $xml = $self->_sign( Action => 'DescribeKeyPairs', %args );
 
-		return $key_pairs;
-	}
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        my $key_pairs;
+
+        foreach my $pair ( @{ $xml->{keySet}{item} } ) {
+            my $key_pair = Net::Amazon::EC2::DescribeKeyPairsResponse->new(
+                key_name        => $pair->{keyName},
+                key_fingerprint => $pair->{keyFingerprint},
+            );
+
+            push @$key_pairs, $key_pair;
+        }
+
+        return $key_pairs;
+    }
 }
 
 =head2 describe_regions(%params)
@@ -2567,40 +2683,40 @@ Returns an array ref of Net::Amazon::EC2::Region objects
 =cut
 
 sub describe_regions {
-	my $self = shift;
-	my %args = validate( @_, {
-		RegionName	=> { type => ARRAYREF | SCALAR, optional => 1 },
-	});
+    my $self = shift;
+    my %args =
+      validate( @_,
+        { RegionName => { type => ARRAYREF | SCALAR, optional => 1 }, } );
 
-	# If we have a array ref of regions lets split them out into their RegionName.n format
-	if (ref ($args{RegionName}) eq 'ARRAY') {
-		my $regions			= delete $args{RegionName};
-		my $count			= 1;
-		foreach my $region (@{$regions}) {
-			$args{"RegionName." . $count} = $region;
-			$count++;
-		}
-	}
-	
-	my $xml = $self->_sign(Action  => 'DescribeRegions', %args);
-	
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
- 		my $regions;
+# If we have a array ref of regions lets split them out into their RegionName.n format
+    if ( ref( $args{RegionName} ) eq 'ARRAY' ) {
+        my $regions = delete $args{RegionName};
+        my $count   = 1;
+        foreach my $region ( @{$regions} ) {
+            $args{ "RegionName." . $count } = $region;
+            $count++;
+        }
+    }
 
- 		foreach my $region_item (@{$xml->{regionInfo}{item}}) {
- 			my $region = Net::Amazon::EC2::Region->new(
- 				region_name			=> $region_item->{regionName},
- 				region_endpoint		=> $region_item->{regionEndpoint},
- 			);
- 			
- 			push @$regions, $region;
- 		}
- 		
- 		return $regions;
-	}
+    my $xml = $self->_sign( Action => 'DescribeRegions', %args );
+
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        my $regions;
+
+        foreach my $region_item ( @{ $xml->{regionInfo}{item} } ) {
+            my $region = Net::Amazon::EC2::Region->new(
+                region_name     => $region_item->{regionName},
+                region_endpoint => $region_item->{regionEndpoint},
+            );
+
+            push @$regions, $region;
+        }
+
+        return $regions;
+    }
 }
 
 =head2 describe_reserved_instances(%params)
@@ -2620,48 +2736,56 @@ Returns an array ref of Net::Amazon::EC2::ReservedInstance objects
 =cut
 
 sub describe_reserved_instances {
-	my $self = shift;
-	my %args = validate( @_, {
-		ReservedInstancesId	=> { type => ARRAYREF | SCALAR, optional => 1 },
-	});
+    my $self = shift;
+    my %args = validate(
+        @_,
+        {
+            ReservedInstancesId => { type => ARRAYREF | SCALAR, optional => 1 },
+        }
+    );
 
-	# If we have a array ref of reserved instances lets split them out into their ReservedInstancesId.n format
-	if (ref ($args{ReservedInstancesId}) eq 'ARRAY') {
-		my $reserved_instance_ids	= delete $args{ReservedInstancesId};
-		my $count					= 1;
-		foreach my $reserved_instance_id (@{$reserved_instance_ids}) {
-			$args{"ReservedInstancesId." . $count} = $reserved_instance_id;
-			$count++;
-		}
-	}
-	
-	my $xml = $self->_sign(Action  => 'DescribeReservedInstances', %args);
-	
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
- 		my $reserved_instances;
+# If we have a array ref of reserved instances lets split them out into their ReservedInstancesId.n format
+    if ( ref( $args{ReservedInstancesId} ) eq 'ARRAY' ) {
+        my $reserved_instance_ids = delete $args{ReservedInstancesId};
+        my $count                 = 1;
+        foreach my $reserved_instance_id ( @{$reserved_instance_ids} ) {
+            $args{ "ReservedInstancesId." . $count } = $reserved_instance_id;
+            $count++;
+        }
+    }
 
- 		foreach my $reserved_instance_item (@{$xml->{reservedInstancesSet}{item}}) {
- 			my $reserved_instance = Net::Amazon::EC2::ReservedInstance->new(
-				reserved_instances_id	=> $reserved_instance_item->{reservedInstancesId},
-				instance_type			=> $reserved_instance_item->{instanceType},
-				availability_zone		=> $reserved_instance_item->{availabilityZone},
-				duration				=> $reserved_instance_item->{duration},
-				start					=> $reserved_instance_item->{start},
-				usage_price				=> $reserved_instance_item->{usagePrice},
-				fixed_price				=> $reserved_instance_item->{fixedPrice},
-				instance_count			=> $reserved_instance_item->{instanceCount},
-				product_description		=> $reserved_instance_item->{productDescription},
-				state					=> $reserved_instance_item->{state},
- 			);
- 			
- 			push @$reserved_instances, $reserved_instance;
- 		}
- 		
- 		return $reserved_instances;
-	}
+    my $xml = $self->_sign( Action => 'DescribeReservedInstances', %args );
+
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        my $reserved_instances;
+
+        foreach
+          my $reserved_instance_item ( @{ $xml->{reservedInstancesSet}{item} } )
+        {
+            my $reserved_instance = Net::Amazon::EC2::ReservedInstance->new(
+                reserved_instances_id =>
+                  $reserved_instance_item->{reservedInstancesId},
+                instance_type => $reserved_instance_item->{instanceType},
+                availability_zone =>
+                  $reserved_instance_item->{availabilityZone},
+                duration       => $reserved_instance_item->{duration},
+                start          => $reserved_instance_item->{start},
+                usage_price    => $reserved_instance_item->{usagePrice},
+                fixed_price    => $reserved_instance_item->{fixedPrice},
+                instance_count => $reserved_instance_item->{instanceCount},
+                product_description =>
+                  $reserved_instance_item->{productDescription},
+                state => $reserved_instance_item->{state},
+            );
+
+            push @$reserved_instances, $reserved_instance;
+        }
+
+        return $reserved_instances;
+    }
 }
 
 =head2 describe_reserved_instances_offerings(%params)
@@ -2697,41 +2821,54 @@ Returns an array ref of Net::Amazon::EC2::ReservedInstanceOffering objects
 =cut
 
 sub describe_reserved_instances_offerings {
-	my $self = shift;
-	my %args = validate( @_, {
-		ReservedInstancesOfferingId	=> { type => SCALAR, optional => 1 },
-		InstanceType				=> { type => SCALAR, optional => 1 },
-		AvailabilityZone			=> { type => SCALAR, optional => 1 },
-		ProductDescription			=> { type => SCALAR, optional => 1 },
-	});
+    my $self = shift;
+    my %args = validate(
+        @_,
+        {
+            ReservedInstancesOfferingId => { type => SCALAR, optional => 1 },
+            InstanceType                => { type => SCALAR, optional => 1 },
+            AvailabilityZone            => { type => SCALAR, optional => 1 },
+            ProductDescription          => { type => SCALAR, optional => 1 },
+        }
+    );
 
-	my $xml = $self->_sign(Action  => 'DescribeReservedInstancesOfferings', %args);
-	
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
- 		my $reserved_instance_offerings;
+    my $xml =
+      $self->_sign( Action => 'DescribeReservedInstancesOfferings', %args );
 
- 		foreach my $reserved_instance_offering_item (@{$xml->{reservedInstancesOfferingsSet}{item}}) {
- 			my $reserved_instance_offering = Net::Amazon::EC2::ReservedInstanceOffering->new(
-				reserved_instances_offering_id	=> $reserved_instance_offering_item->{reservedInstancesOfferingId},
-				instance_type					=> $reserved_instance_offering_item->{instanceType},
-				availability_zone				=> $reserved_instance_offering_item->{availabilityZone},
-				duration						=> $reserved_instance_offering_item->{duration},
-				start							=> $reserved_instance_offering_item->{start},
-				usage_price						=> $reserved_instance_offering_item->{usagePrice},
-				fixed_price						=> $reserved_instance_offering_item->{fixedPrice},
-				instance_count					=> $reserved_instance_offering_item->{instanceCount},
-				product_description				=> $reserved_instance_offering_item->{productDescription},
-				state							=> $reserved_instance_offering_item->{state},
- 			);
- 			
- 			push @$reserved_instance_offerings, $reserved_instance_offering;
- 		}
- 		
- 		return $reserved_instance_offerings;
-	}
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        my $reserved_instance_offerings;
+
+        foreach my $reserved_instance_offering_item (
+            @{ $xml->{reservedInstancesOfferingsSet}{item} } )
+        {
+            my $reserved_instance_offering =
+              Net::Amazon::EC2::ReservedInstanceOffering->new(
+                reserved_instances_offering_id =>
+                  $reserved_instance_offering_item
+                  ->{reservedInstancesOfferingId},
+                instance_type =>
+                  $reserved_instance_offering_item->{instanceType},
+                availability_zone =>
+                  $reserved_instance_offering_item->{availabilityZone},
+                duration    => $reserved_instance_offering_item->{duration},
+                start       => $reserved_instance_offering_item->{start},
+                usage_price => $reserved_instance_offering_item->{usagePrice},
+                fixed_price => $reserved_instance_offering_item->{fixedPrice},
+                instance_count =>
+                  $reserved_instance_offering_item->{instanceCount},
+                product_description =>
+                  $reserved_instance_offering_item->{productDescription},
+                state => $reserved_instance_offering_item->{state},
+              );
+
+            push @$reserved_instance_offerings, $reserved_instance_offering;
+        }
+
+        return $reserved_instance_offerings;
+    }
 }
 
 =head2 describe_security_groups(%params)
@@ -2755,173 +2892,172 @@ Returns an array ref of Net::Amazon::EC2::SecurityGroup objects
 =cut
 
 sub describe_security_groups {
-	my $self = shift;
-	my %args = validate( @_, {
-		GroupName => { type => SCALAR | ARRAYREF, optional => 1 },
-		GroupId => { type => SCALAR | ARRAYREF, optional => 1 },
-	});
+    my $self = shift;
+    my %args = validate(
+        @_,
+        {
+            GroupName => { type => SCALAR | ARRAYREF, optional => 1 },
+            GroupId   => { type => SCALAR | ARRAYREF, optional => 1 },
+        }
+    );
 
-	# If we have a array ref of GroupNames lets split them out into their GroupName.n format
-	if (ref ($args{GroupName}) eq 'ARRAY') {
-		my $groups = delete $args{GroupName};
-		my $count = 1;
-		foreach my $group (@{$groups}) {
-			$args{"GroupName." . $count++} = $group;
-		}
-	}
-	
-	# If we have a array ref of GroupIds lets split them out into their GroupId.n format
-	if (ref ($args{GroupId}) eq 'ARRAY') {
-		my $groups = delete $args{GroupId};
-		my $count = 1;
-		foreach my $group (@{$groups}) {
-			$args{"GroupId." . $count++} = $group;
-		}
-	}
+# If we have a array ref of GroupNames lets split them out into their GroupName.n format
+    if ( ref( $args{GroupName} ) eq 'ARRAY' ) {
+        my $groups = delete $args{GroupName};
+        my $count  = 1;
+        foreach my $group ( @{$groups} ) {
+            $args{ "GroupName." . $count++ } = $group;
+        }
+    }
 
-	my $xml = $self->_sign(Action  => 'DescribeSecurityGroups', %args);
-	
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		my $security_groups;
-		foreach my $sec_grp (@{$xml->{securityGroupInfo}{item}}) {
-			my $owner_id = $sec_grp->{ownerId};
-			my $group_name = $sec_grp->{groupName};
-			my $group_id = $sec_grp->{groupId};
-			my $group_description = $sec_grp->{groupDescription};
-			my $vpc_id = $sec_grp->{vpcId};
-			my $tag_set;
-			my $ip_permissions;
-			my $ip_permissions_egress;
+# If we have a array ref of GroupIds lets split them out into their GroupId.n format
+    if ( ref( $args{GroupId} ) eq 'ARRAY' ) {
+        my $groups = delete $args{GroupId};
+        my $count  = 1;
+        foreach my $group ( @{$groups} ) {
+            $args{ "GroupId." . $count++ } = $group;
+        }
+    }
 
-			foreach my $ip_perm (@{$sec_grp->{ipPermissions}{item}}) {
-				my $ip_protocol = $ip_perm->{ipProtocol};
-				my $from_port	= $ip_perm->{fromPort};
-				my $to_port		= $ip_perm->{toPort};
-				my $icmp_port	= $ip_perm->{icmpPort};
-				my $groups;
-				my $ip_ranges;
-				
-				if (grep { defined && length } $ip_perm->{groups}{item}) {
-					foreach my $grp (@{$ip_perm->{groups}{item}}) {
-						my $group = Net::Amazon::EC2::UserIdGroupPair->new(
-							user_id		=> $grp->{userId},
-							group_name	=> $grp->{groupName},
-						);
-						
-						push @$groups, $group;
-					}
-				}
-				
-				if (grep { defined && length } $ip_perm->{ipRanges}{item}) {
-					foreach my $rng (@{$ip_perm->{ipRanges}{item}}) {
-						my $ip_range = Net::Amazon::EC2::IpRange->new(
-							cidr_ip => $rng->{cidrIp},
-						);
-						
-						push @$ip_ranges, $ip_range;
-					}
-				}
+    my $xml = $self->_sign( Action => 'DescribeSecurityGroups', %args );
 
-								
-				my $ip_permission = Net::Amazon::EC2::IpPermission->new(
-					ip_protocol			=> $ip_protocol,
-					group_name			=> $group_name,
-					group_description	=> $group_description,
-					from_port			=> $from_port,
-					to_port				=> $to_port,
-					icmp_port			=> $icmp_port,
-				);
-				
-				if ($ip_ranges) {
-					$ip_permission->ip_ranges($ip_ranges);
-				}
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        my $security_groups;
+        foreach my $sec_grp ( @{ $xml->{securityGroupInfo}{item} } ) {
+            my $owner_id          = $sec_grp->{ownerId};
+            my $group_name        = $sec_grp->{groupName};
+            my $group_id          = $sec_grp->{groupId};
+            my $group_description = $sec_grp->{groupDescription};
+            my $vpc_id            = $sec_grp->{vpcId};
+            my $tag_set;
+            my $ip_permissions;
+            my $ip_permissions_egress;
 
-				if ($groups) {
-					$ip_permission->groups($groups);
-				}
-				
-				push @$ip_permissions, $ip_permission;
-			}
-			
-			foreach my $ip_perm (@{$sec_grp->{ipPermissionsEgress}{item}}) {
-				my $ip_protocol = $ip_perm->{ipProtocol};
-				my $from_port	= $ip_perm->{fromPort};
-				my $to_port		= $ip_perm->{toPort};
-				my $icmp_port	= $ip_perm->{icmpPort};
-				my $groups;
-				my $ip_ranges;
-				
-				if (grep { defined && length } $ip_perm->{groups}{item}) {
-					foreach my $grp (@{$ip_perm->{groups}{item}}) {
-						my $group = Net::Amazon::EC2::UserIdGroupPair->new(
-							user_id		=> $grp->{userId},
-							group_name	=> $grp->{groupName},
-						);
-						
-						push @$groups, $group;
-					}
-				}
-				
-				if (grep { defined && length } $ip_perm->{ipRanges}{item}) {
-					foreach my $rng (@{$ip_perm->{ipRanges}{item}}) {
-						my $ip_range = Net::Amazon::EC2::IpRange->new(
-							cidr_ip => $rng->{cidrIp},
-						);
-						
-						push @$ip_ranges, $ip_range;
-					}
-				}
+            foreach my $ip_perm ( @{ $sec_grp->{ipPermissions}{item} } ) {
+                my $ip_protocol = $ip_perm->{ipProtocol};
+                my $from_port   = $ip_perm->{fromPort};
+                my $to_port     = $ip_perm->{toPort};
+                my $icmp_port   = $ip_perm->{icmpPort};
+                my $groups;
+                my $ip_ranges;
 
-								
-				my $ip_permission = Net::Amazon::EC2::IpPermission->new(
-					ip_protocol			=> $ip_protocol,
-					group_name			=> $group_name,
-					group_description	=> $group_description,
-					from_port			=> $from_port,
-					to_port				=> $to_port,
-					icmp_port			=> $icmp_port,
-				);
-				
-				if ($ip_ranges) {
-					$ip_permission->ip_ranges($ip_ranges);
-				}
+                if ( grep { defined && length } $ip_perm->{groups}{item} ) {
+                    foreach my $grp ( @{ $ip_perm->{groups}{item} } ) {
+                        my $group = Net::Amazon::EC2::UserIdGroupPair->new(
+                            user_id    => $grp->{userId},
+                            group_name => $grp->{groupName},
+                        );
 
-				if ($groups) {
-					$ip_permission->groups($groups);
-				}
-				
-				push @$ip_permissions_egress, $ip_permission;
-			}
-			
-			
-			foreach my $sec_tag (@{$sec_grp->{tagSet}{item}})
-			{
-				my $tag = Net::Amazon::EC2::TagSet->new(
-					key => $sec_tag->{key},
-					value => $sec_tag->{value},
-				);
-				push @$tag_set, $tag;
-			}
+                        push @$groups, $group;
+                    }
+                }
 
-			my $security_group = Net::Amazon::EC2::SecurityGroup->new(
-				owner_id			=> $owner_id,
-				group_name			=> $group_name,
-				group_id			=> $group_id,
-				vpc_id 	 			=> $vpc_id,
-				tag_set 			=> $tag_set,
-				group_description	=> $group_description,
-				ip_permissions		=> $ip_permissions,
-				ip_permissions_egress	=> $ip_permissions_egress,
-			);
-			
-			push @$security_groups, $security_group;
-		}
-		
-		return $security_groups;	
-	}
+                if ( grep { defined && length } $ip_perm->{ipRanges}{item} ) {
+                    foreach my $rng ( @{ $ip_perm->{ipRanges}{item} } ) {
+                        my $ip_range =
+                          Net::Amazon::EC2::IpRange->new(
+                            cidr_ip => $rng->{cidrIp}, );
+
+                        push @$ip_ranges, $ip_range;
+                    }
+                }
+
+                my $ip_permission = Net::Amazon::EC2::IpPermission->new(
+                    ip_protocol       => $ip_protocol,
+                    group_name        => $group_name,
+                    group_description => $group_description,
+                    from_port         => $from_port,
+                    to_port           => $to_port,
+                    icmp_port         => $icmp_port,
+                );
+
+                if ($ip_ranges) {
+                    $ip_permission->ip_ranges($ip_ranges);
+                }
+
+                if ($groups) {
+                    $ip_permission->groups($groups);
+                }
+
+                push @$ip_permissions, $ip_permission;
+            }
+
+            foreach my $ip_perm ( @{ $sec_grp->{ipPermissionsEgress}{item} } ) {
+                my $ip_protocol = $ip_perm->{ipProtocol};
+                my $from_port   = $ip_perm->{fromPort};
+                my $to_port     = $ip_perm->{toPort};
+                my $icmp_port   = $ip_perm->{icmpPort};
+                my $groups;
+                my $ip_ranges;
+
+                if ( grep { defined && length } $ip_perm->{groups}{item} ) {
+                    foreach my $grp ( @{ $ip_perm->{groups}{item} } ) {
+                        my $group = Net::Amazon::EC2::UserIdGroupPair->new(
+                            user_id    => $grp->{userId},
+                            group_name => $grp->{groupName},
+                        );
+
+                        push @$groups, $group;
+                    }
+                }
+
+                if ( grep { defined && length } $ip_perm->{ipRanges}{item} ) {
+                    foreach my $rng ( @{ $ip_perm->{ipRanges}{item} } ) {
+                        my $ip_range =
+                          Net::Amazon::EC2::IpRange->new(
+                            cidr_ip => $rng->{cidrIp}, );
+
+                        push @$ip_ranges, $ip_range;
+                    }
+                }
+
+                my $ip_permission = Net::Amazon::EC2::IpPermission->new(
+                    ip_protocol       => $ip_protocol,
+                    group_name        => $group_name,
+                    group_description => $group_description,
+                    from_port         => $from_port,
+                    to_port           => $to_port,
+                    icmp_port         => $icmp_port,
+                );
+
+                if ($ip_ranges) {
+                    $ip_permission->ip_ranges($ip_ranges);
+                }
+
+                if ($groups) {
+                    $ip_permission->groups($groups);
+                }
+
+                push @$ip_permissions_egress, $ip_permission;
+            }
+
+            foreach my $sec_tag ( @{ $sec_grp->{tagSet}{item} } ) {
+                my $tag = Net::Amazon::EC2::TagSet->new(
+                    key   => $sec_tag->{key},
+                    value => $sec_tag->{value},
+                );
+                push @$tag_set, $tag;
+            }
+
+            my $security_group = Net::Amazon::EC2::SecurityGroup->new(
+                owner_id              => $owner_id,
+                group_name            => $group_name,
+                group_id              => $group_id,
+                vpc_id                => $vpc_id,
+                tag_set               => $tag_set,
+                group_description     => $group_description,
+                ip_permissions        => $ip_permissions,
+                ip_permissions_egress => $ip_permissions_egress,
+            );
+
+            push @$security_groups, $security_group;
+        }
+
+        return $security_groups;
+    }
 }
 
 =head2 describe_snapshot_attribute(%params)
@@ -2946,52 +3082,56 @@ Returns a Net::Amazon::EC2::SnapshotAttribute object.
 =cut
 
 sub describe_snapshot_attribute {
-	my $self = shift;
-	my %args = validate( @_, {
-		SnapshotId		=> { type => ARRAYREF | SCALAR, optional => 1 },
-		Attribute		=> { type => SCALAR },
-	});
+    my $self = shift;
+    my %args = validate(
+        @_,
+        {
+            SnapshotId => { type => ARRAYREF | SCALAR, optional => 1 },
+            Attribute  => { type => SCALAR },
+        }
+    );
 
-	# If we have a array ref of volumes lets split them out into their SnapshotId.n format
-	if (ref ($args{SnapshotId}) eq 'ARRAY') {
-		my $snapshots		= delete $args{SnapshotId};
-		my $count			= 1;
-		foreach my $snapshot (@{$snapshots}) {
-			$args{"SnapshotId." . $count} = $snapshot;
-			$count++;
-		}
-	}
-	
-	my $xml = $self->_sign(Action  => 'DescribeSnapshotAttribute', %args);
-	
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		my $perms;
-		
-		unless ( grep { defined && length } $xml->{createVolumePermission} and ref $xml->{createVolumePermission} ne 'HASH') {
-			$perms = undef;
-		}
+# If we have a array ref of volumes lets split them out into their SnapshotId.n format
+    if ( ref( $args{SnapshotId} ) eq 'ARRAY' ) {
+        my $snapshots = delete $args{SnapshotId};
+        my $count     = 1;
+        foreach my $snapshot ( @{$snapshots} ) {
+            $args{ "SnapshotId." . $count } = $snapshot;
+            $count++;
+        }
+    }
 
- 		foreach my $perm_item (@{$xml->{createVolumePermission}{item}}) {
- 			my $perm = Net::Amazon::EC2::CreateVolumePermission->new(
- 				user_id			=> $perm_item->{userId},
- 				group			=> $perm_item->{group},
- 			);
- 			
- 			push @$perms, $perm;
- 		}
+    my $xml = $self->_sign( Action => 'DescribeSnapshotAttribute', %args );
 
-		my $snapshot_attribute = Net::Amazon::EC2::SnapshotAttribute->new(
-			snapshot_id		=> $xml->{snapshotId},
-			permissions		=> $perms,
-		);
- 		
- 		return $snapshot_attribute;
-	}
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        my $perms;
+
+        unless ( grep { defined && length } $xml->{createVolumePermission}
+            and ref $xml->{createVolumePermission} ne 'HASH' )
+        {
+            $perms = undef;
+        }
+
+        foreach my $perm_item ( @{ $xml->{createVolumePermission}{item} } ) {
+            my $perm = Net::Amazon::EC2::CreateVolumePermission->new(
+                user_id => $perm_item->{userId},
+                group   => $perm_item->{group},
+            );
+
+            push @$perms, $perm;
+        }
+
+        my $snapshot_attribute = Net::Amazon::EC2::SnapshotAttribute->new(
+            snapshot_id => $xml->{snapshotId},
+            permissions => $perms,
+        );
+
+        return $snapshot_attribute;
+    }
 }
-
 
 =head2 describe_snapshots(%params)
 
@@ -3026,73 +3166,80 @@ Returns an array ref of Net::Amazon::EC2::Snapshot objects.
 =cut
 
 sub describe_snapshots {
-	my $self = shift;
-	my %args = validate( @_, {
-		SnapshotId		=> { type => ARRAYREF | SCALAR, optional => 1 },
-		Owner			=> { type => SCALAR, optional => 1 },
-		RestorableBy	=> { type => SCALAR, optional => 1 },
-		Filter		=> { type => ARRAYREF, optional => 1 },
-	});
+    my $self = shift;
+    my %args = validate(
+        @_,
+        {
+            SnapshotId   => { type => ARRAYREF | SCALAR, optional => 1 },
+            Owner        => { type => SCALAR,            optional => 1 },
+            RestorableBy => { type => SCALAR,            optional => 1 },
+            Filter       => { type => ARRAYREF,          optional => 1 },
+        }
+    );
 
-	$self->_build_filters(\%args);
+    $self->_build_filters( \%args );
 
-	# If we have a array ref of volumes lets split them out into their SnapshotId.n format
-	if (ref ($args{SnapshotId}) eq 'ARRAY') {
-		my $snapshots		= delete $args{SnapshotId};
-		my $count			= 1;
-		foreach my $snapshot (@{$snapshots}) {
-			$args{"SnapshotId." . $count} = $snapshot;
-			$count++;
-		}
-	}
-	
-	my $xml = $self->_sign(Action  => 'DescribeSnapshots', %args);
-	
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
- 		my $snapshots;
+# If we have a array ref of volumes lets split them out into their SnapshotId.n format
+    if ( ref( $args{SnapshotId} ) eq 'ARRAY' ) {
+        my $snapshots = delete $args{SnapshotId};
+        my $count     = 1;
+        foreach my $snapshot ( @{$snapshots} ) {
+            $args{ "SnapshotId." . $count } = $snapshot;
+            $count++;
+        }
+    }
 
- 		foreach my $snap (@{$xml->{snapshotSet}{item}}) {
-			unless ( grep { defined && length } $snap->{description} and ref $snap->{description} ne 'HASH') {
-				$snap->{description} = undef;
-			}
+    my $xml = $self->_sign( Action => 'DescribeSnapshots', %args );
 
-			unless ( grep { defined && length } $snap->{progress} and ref $snap->{progress} ne 'HASH') {
-				$snap->{progress} = undef;
-			}
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        my $snapshots;
 
-			my $tag_sets;
-			foreach my $tag_arr (@{$snap->{tagSet}{item}}) {
+        foreach my $snap ( @{ $xml->{snapshotSet}{item} } ) {
+            unless ( grep { defined && length } $snap->{description}
+                and ref $snap->{description} ne 'HASH' )
+            {
+                $snap->{description} = undef;
+            }
+
+            unless ( grep { defined && length } $snap->{progress}
+                and ref $snap->{progress} ne 'HASH' )
+            {
+                $snap->{progress} = undef;
+            }
+
+            my $tag_sets;
+            foreach my $tag_arr ( @{ $snap->{tagSet}{item} } ) {
                 if ( ref $tag_arr->{value} eq "HASH" ) {
                     $tag_arr->{value} = "";
                 }
-				my $tag = Net::Amazon::EC2::TagSet->new(
-					key => $tag_arr->{key},
-					value => $tag_arr->{value},
-				);
-				push @$tag_sets, $tag;
-			}
+                my $tag = Net::Amazon::EC2::TagSet->new(
+                    key   => $tag_arr->{key},
+                    value => $tag_arr->{value},
+                );
+                push @$tag_sets, $tag;
+            }
 
- 			my $snapshot = Net::Amazon::EC2::Snapshot->new(
- 				snapshot_id		=> $snap->{snapshotId},
- 				status			=> $snap->{status},
- 				volume_id		=> $snap->{volumeId},
- 				start_time		=> $snap->{startTime},
- 				progress		=> $snap->{progress},
- 				owner_id		=> $snap->{ownerId},
- 				volume_size		=> $snap->{volumeSize},
- 				description		=> $snap->{description},
- 				owner_alias		=> $snap->{ownerAlias},
-				tag_set			=> $tag_sets,
- 			);
- 			
- 			push @$snapshots, $snapshot;
- 		}
- 		
- 		return $snapshots;
-	}
+            my $snapshot = Net::Amazon::EC2::Snapshot->new(
+                snapshot_id => $snap->{snapshotId},
+                status      => $snap->{status},
+                volume_id   => $snap->{volumeId},
+                start_time  => $snap->{startTime},
+                progress    => $snap->{progress},
+                owner_id    => $snap->{ownerId},
+                volume_size => $snap->{volumeSize},
+                description => $snap->{description},
+                owner_alias => $snap->{ownerAlias},
+                tag_set     => $tag_sets,
+            );
+
+            push @$snapshots, $snapshot;
+        }
+
+        return $snapshots;
+    }
 }
 
 =head2 describe_volumes(%params)
@@ -3113,82 +3260,85 @@ Returns an array ref of Net::Amazon::EC2::Volume objects.
 =cut
 
 sub describe_volumes {
-	my $self = shift;
-	my %args = validate( @_, {
-		VolumeId	=> { type => ARRAYREF | SCALAR, optional => 1 },
-	});
+    my $self = shift;
+    my %args =
+      validate( @_,
+        { VolumeId => { type => ARRAYREF | SCALAR, optional => 1 }, } );
 
-	# If we have a array ref of volumes lets split them out into their Volume.n format
-	if (ref ($args{VolumeId}) eq 'ARRAY') {
-		my $volumes		= delete $args{VolumeId};
-		my $count			= 1;
-		foreach my $volume (@{$volumes}) {
-			$args{"VolumeId." . $count} = $volume;
-			$count++;
-		}
-	}
-	
-	my $xml = $self->_sign(Action  => 'DescribeVolumes', %args);
+# If we have a array ref of volumes lets split them out into their Volume.n format
+    if ( ref( $args{VolumeId} ) eq 'ARRAY' ) {
+        my $volumes = delete $args{VolumeId};
+        my $count   = 1;
+        foreach my $volume ( @{$volumes} ) {
+            $args{ "VolumeId." . $count } = $volume;
+            $count++;
+        }
+    }
 
-	
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		my $volumes;
+    my $xml = $self->_sign( Action => 'DescribeVolumes', %args );
 
-		foreach my $volume_set (@{$xml->{volumeSet}{item}}) {
-			my $attachments;
-			unless ( grep { defined && length } $volume_set->{snapshotId} and ref $volume_set->{snapshotId} ne 'HASH') {
-				$volume_set->{snapshotId} = undef;
-			}
-		
-			foreach my $attachment_set (@{$volume_set->{attachmentSet}{item}}) {
- 				my $attachment = Net::Amazon::EC2::Attachment->new(
- 					volume_id				=> $attachment_set->{volumeId},
- 					status					=> $attachment_set->{status},
- 					instance_id				=> $attachment_set->{instanceId},
- 					attach_time				=> $attachment_set->{attachTime},
- 					device					=> $attachment_set->{device},
- 					delete_on_termination	=> $attachment_set->{deleteOnTermination},
- 				);
- 				
- 				push @$attachments, $attachment;
-			}
-			
-			my $tags;
-			foreach my $tag_arr (@{$volume_set->{tagSet}{item}}) {
-				if ( ref $tag_arr->{value} eq "HASH" ) {
-					$tag_arr->{value} = "";
-				}
-				my $tag = Net::Amazon::EC2::TagSet->new(
-					key => $tag_arr->{key},
-					value => $tag_arr->{value},
-				);
-				push @$tags, $tag;
-			}
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        my $volumes;
 
-			my $volume = Net::Amazon::EC2::Volume->new(
-				volume_id		=> $volume_set->{volumeId},
-				status			=> $volume_set->{status},
-				zone			=> $volume_set->{availabilityZone},
-				create_time		=> $volume_set->{createTime},
-				snapshot_id		=> $volume_set->{snapshotId},
-				size			=> $volume_set->{size},
-				volume_type		=> $volume_set->{volumeType},
-				iops			=> $volume_set->{iops},
-				encrypted		=> $volume_set->{encrypted},
-				tag_set                 => $tags,
-				attachments		=> $attachments,
-			);
-			
-			push @$volumes, $volume;
-		}
-		
-		return $volumes;
-	}
+        foreach my $volume_set ( @{ $xml->{volumeSet}{item} } ) {
+            my $attachments;
+            unless ( grep { defined && length } $volume_set->{snapshotId}
+                and ref $volume_set->{snapshotId} ne 'HASH' )
+            {
+                $volume_set->{snapshotId} = undef;
+            }
+
+            foreach
+              my $attachment_set ( @{ $volume_set->{attachmentSet}{item} } )
+            {
+                my $attachment = Net::Amazon::EC2::Attachment->new(
+                    volume_id   => $attachment_set->{volumeId},
+                    status      => $attachment_set->{status},
+                    instance_id => $attachment_set->{instanceId},
+                    attach_time => $attachment_set->{attachTime},
+                    device      => $attachment_set->{device},
+                    delete_on_termination =>
+                      $attachment_set->{deleteOnTermination},
+                );
+
+                push @$attachments, $attachment;
+            }
+
+            my $tags;
+            foreach my $tag_arr ( @{ $volume_set->{tagSet}{item} } ) {
+                if ( ref $tag_arr->{value} eq "HASH" ) {
+                    $tag_arr->{value} = "";
+                }
+                my $tag = Net::Amazon::EC2::TagSet->new(
+                    key   => $tag_arr->{key},
+                    value => $tag_arr->{value},
+                );
+                push @$tags, $tag;
+            }
+
+            my $volume = Net::Amazon::EC2::Volume->new(
+                volume_id   => $volume_set->{volumeId},
+                status      => $volume_set->{status},
+                zone        => $volume_set->{availabilityZone},
+                create_time => $volume_set->{createTime},
+                snapshot_id => $volume_set->{snapshotId},
+                size        => $volume_set->{size},
+                volume_type => $volume_set->{volumeType},
+                iops        => $volume_set->{iops},
+                encrypted   => $volume_set->{encrypted},
+                tag_set     => $tags,
+                attachments => $attachments,
+            );
+
+            push @$volumes, $volume;
+        }
+
+        return $volumes;
+    }
 }
-
 
 =head2 describe_subnets(%params)
 
@@ -3217,76 +3367,79 @@ Returns an array ref of Net::Amazon::EC2::DescribeSubnetResponse objects
 =cut
 
 sub describe_subnets {
-  my $self = shift;
-  my %args = validate( @_, {
-      'SubnetId'            => { type => ARRAYREF | SCALAR, optional => 1 },
-      'Filter.Name'         => { type => ARRAYREF | SCALAR, optional => 1 },
-      'Filter.Value'        => { type => ARRAYREF | SCALAR, optional => 1 },
-  });
-
-  if (ref ($args{'SubnetId'}) eq 'ARRAY') {
-    my $keys      = delete $args{'SubnetId'};
-    my $count     = 1;
-    foreach my $key (@{$keys}) {
-      $args{"SubnetId." . $count } = $key;
-      $count++;
-    }
-  }
-  if (ref ($args{'Filter.Name'}) eq 'ARRAY') {
-    my $keys      = delete $args{'Filter.Name'};
-    my $count     = 1;
-    foreach my $key (@{$keys}) {
-      $args{"Filter." . $count . ".Name"} = $key;
-      $count++;
-    }
-  }
-  if (ref ($args{'Filter.Value'}) eq 'ARRAY') {
-    my $keys      = delete $args{'Filter.Value'};
-    my $count     = 1;
-    foreach my $key (@{$keys}) {
-      $args{"Filter." . $count . ".Value"} = $key;
-      $count++;
-    }
-  }
-
-  my $xml = $self->_sign(Action  => 'DescribeSubnets', %args);
-
-  if ( grep { defined && length } $xml->{Errors} ) {
-    return $self->_parse_errors($xml);
-  }
-  else {
-    my $subnets;
-
-    foreach my $pair (@{$xml->{subnetSet}{item}}) {
-      my $tags;
-
-      foreach my $tag_arr (@{$pair->{tagSet}{item}}) {
-        if ( ref $tag_arr->{value} eq "HASH" ) {
-          $tag_arr->{value} = "";
+    my $self = shift;
+    my %args = validate(
+        @_,
+        {
+            'SubnetId'     => { type => ARRAYREF | SCALAR, optional => 1 },
+            'Filter.Name'  => { type => ARRAYREF | SCALAR, optional => 1 },
+            'Filter.Value' => { type => ARRAYREF | SCALAR, optional => 1 },
         }
-        my $tag = Net::Amazon::EC2::TagSet->new(
-          key => $tag_arr->{key},
-          value => $tag_arr->{value},
-        );
-        push @$tags, $tag;
-      }
+    );
 
-      my $subnet = Net::Amazon::EC2::DescribeSubnetResponse->new(
-        subnet_id                  => $pair->{subnetId},
-        state                      => $pair->{state},
-        vpc_id                     => $pair->{vpcId},
-        cidr_block                 => $pair->{cidrBlock},
-        available_ip_address_count => $pair->{availableIpAddressCount},
-        availability_zone          => $pair->{availabilityZone},
-        default_for_az             => $pair->{defaultForAz},
-        map_public_ip_on_launch    => $pair->{mapPublicIpOnLaunch},
-        tag_set                    => $tags,
-      );
-
-      push @$subnets, $subnet;
+    if ( ref( $args{'SubnetId'} ) eq 'ARRAY' ) {
+        my $keys  = delete $args{'SubnetId'};
+        my $count = 1;
+        foreach my $key ( @{$keys} ) {
+            $args{ "SubnetId." . $count } = $key;
+            $count++;
+        }
     }
-    return $subnets;
-  }
+    if ( ref( $args{'Filter.Name'} ) eq 'ARRAY' ) {
+        my $keys  = delete $args{'Filter.Name'};
+        my $count = 1;
+        foreach my $key ( @{$keys} ) {
+            $args{ "Filter." . $count . ".Name" } = $key;
+            $count++;
+        }
+    }
+    if ( ref( $args{'Filter.Value'} ) eq 'ARRAY' ) {
+        my $keys  = delete $args{'Filter.Value'};
+        my $count = 1;
+        foreach my $key ( @{$keys} ) {
+            $args{ "Filter." . $count . ".Value" } = $key;
+            $count++;
+        }
+    }
+
+    my $xml = $self->_sign( Action => 'DescribeSubnets', %args );
+
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        my $subnets;
+
+        foreach my $pair ( @{ $xml->{subnetSet}{item} } ) {
+            my $tags;
+
+            foreach my $tag_arr ( @{ $pair->{tagSet}{item} } ) {
+                if ( ref $tag_arr->{value} eq "HASH" ) {
+                    $tag_arr->{value} = "";
+                }
+                my $tag = Net::Amazon::EC2::TagSet->new(
+                    key   => $tag_arr->{key},
+                    value => $tag_arr->{value},
+                );
+                push @$tags, $tag;
+            }
+
+            my $subnet = Net::Amazon::EC2::DescribeSubnetResponse->new(
+                subnet_id                  => $pair->{subnetId},
+                state                      => $pair->{state},
+                vpc_id                     => $pair->{vpcId},
+                cidr_block                 => $pair->{cidrBlock},
+                available_ip_address_count => $pair->{availableIpAddressCount},
+                availability_zone          => $pair->{availabilityZone},
+                default_for_az             => $pair->{defaultForAz},
+                map_public_ip_on_launch    => $pair->{mapPublicIpOnLaunch},
+                tag_set                    => $tags,
+            );
+
+            push @$subnets, $subnet;
+        }
+        return $subnets;
+    }
 }
 
 =head2 describe_tags(%params)
@@ -3310,50 +3463,53 @@ Returns an array ref of Net::Amazon::EC2::DescribeTags objects
 =cut
 
 sub describe_tags {
-	my $self = shift;
-	my %args = validate( @_, {
-		'Filter.Name'				=> { type => ARRAYREF | SCALAR, optional => 1 },
-		'Filter.Value'				=> { type => ARRAYREF | SCALAR, optional => 1 },
-	});
+    my $self = shift;
+    my %args = validate(
+        @_,
+        {
+            'Filter.Name'  => { type => ARRAYREF | SCALAR, optional => 1 },
+            'Filter.Value' => { type => ARRAYREF | SCALAR, optional => 1 },
+        }
+    );
 
-	if (ref ($args{'Filter.Name'}) eq 'ARRAY') {
-		my $keys			= delete $args{'Filter.Name'};
-		my $count			= 1;
-		foreach my $key (@{$keys}) {
-			$args{"Filter." . $count . ".Name"} = $key;
-			$count++;
-		}
-	}
-	if (ref ($args{'Filter.Value'}) eq 'ARRAY') {
-		my $keys			= delete $args{'Filter.Value'};
-		my $count			= 1;
-		foreach my $key (@{$keys}) {
-			$args{"Filter." . $count . ".Value"} = $key;
-			$count++;
-		}
-	}
+    if ( ref( $args{'Filter.Name'} ) eq 'ARRAY' ) {
+        my $keys  = delete $args{'Filter.Name'};
+        my $count = 1;
+        foreach my $key ( @{$keys} ) {
+            $args{ "Filter." . $count . ".Name" } = $key;
+            $count++;
+        }
+    }
+    if ( ref( $args{'Filter.Value'} ) eq 'ARRAY' ) {
+        my $keys  = delete $args{'Filter.Value'};
+        my $count = 1;
+        foreach my $key ( @{$keys} ) {
+            $args{ "Filter." . $count . ".Value" } = $key;
+            $count++;
+        }
+    }
 
-	my $xml = $self->_sign(Action  => 'DescribeTags', %args);
+    my $xml = $self->_sign( Action => 'DescribeTags', %args );
 
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {	
-		my $tags;
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        my $tags;
 
-		foreach my $pair (@{$xml->{tagSet}{item}}) {
-			my $tag = Net::Amazon::EC2::DescribeTags->new(
-				resource_id		=> $pair->{resourceId},
-				resource_type	=> $pair->{resourceType},
-				key				=> $pair->{key},
-				value			=> $pair->{value},
-			);
-			
-			push @$tags, $tag;
-		}
+        foreach my $pair ( @{ $xml->{tagSet}{item} } ) {
+            my $tag = Net::Amazon::EC2::DescribeTags->new(
+                resource_id   => $pair->{resourceId},
+                resource_type => $pair->{resourceType},
+                key           => $pair->{key},
+                value         => $pair->{value},
+            );
 
-		return $tags;
-	}
+            push @$tags, $tag;
+        }
+
+        return $tags;
+    }
 }
 
 =head2 detach_volume(%params)
@@ -3390,31 +3546,33 @@ Returns a Net::Amazon::EC2::Attachment object containing the resulting volume st
 =cut
 
 sub detach_volume {
-	my $self = shift;
-	my %args = validate( @_, {
-		VolumeId	=> { type => SCALAR },
-		InstanceId	=> { type => SCALAR, optional => 1 },
-		Device		=> { type => SCALAR, optional => 1 },
-		Force		=> { type => SCALAR, optional => 1 },
-	});
+    my $self = shift;
+    my %args = validate(
+        @_,
+        {
+            VolumeId   => { type => SCALAR },
+            InstanceId => { type => SCALAR, optional => 1 },
+            Device     => { type => SCALAR, optional => 1 },
+            Force      => { type => SCALAR, optional => 1 },
+        }
+    );
 
-	my $xml = $self->_sign(Action  => 'DetachVolume', %args);
+    my $xml = $self->_sign( Action => 'DetachVolume', %args );
 
-	
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		my $attachment = Net::Amazon::EC2::Attachment->new(
-			volume_id	=> $xml->{volumeId},
-			status		=> $xml->{status},
-			instance_id	=> $xml->{instanceId},
-			attach_time	=> $xml->{attachTime},
-			device		=> $xml->{device},
-		);
-		
-		return $attachment;
-	}
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        my $attachment = Net::Amazon::EC2::Attachment->new(
+            volume_id   => $xml->{volumeId},
+            status      => $xml->{status},
+            instance_id => $xml->{instanceId},
+            attach_time => $xml->{attachTime},
+            device      => $xml->{device},
+        );
+
+        return $attachment;
+    }
 }
 
 =head2 disassociate_address(%params)
@@ -3434,24 +3592,22 @@ Returns true if the disassociation succeeded.
 =cut
 
 sub disassociate_address {
-	my $self = shift;
-	my %args = validate( @_, {
-		PublicIp 		=> { type => SCALAR },
-	});
-	
-	my $xml = $self->_sign(Action  => 'DisassociateAddress', %args);
+    my $self = shift;
+    my %args = validate( @_, { PublicIp => { type => SCALAR }, } );
 
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		if ($xml->{return} eq 'true') {
-			return 1;
-		}
-		else {
-			return undef;
-		}
-	}
+    my $xml = $self->_sign( Action => 'DisassociateAddress', %args );
+
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        if ( $xml->{return} eq 'true' ) {
+            return 1;
+        }
+        else {
+            return undef;
+        }
+    }
 }
 
 =head2 get_console_output(%params)
@@ -3473,30 +3629,27 @@ since the last call.)
 =cut
 
 sub get_console_output {
-	my $self = shift;
-	my %args = validate( @_, {
-		InstanceId	=> { type => SCALAR },
-	});
-	
-	
-	my $xml = $self->_sign(Action  => 'GetConsoleOutput', %args);
-	
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		if ( grep { defined && length } $xml->{output} ) {
-			my $console_output = Net::Amazon::EC2::ConsoleOutput->new(
-				instance_id	=> $xml->{instanceId},
-				timestamp	=> $xml->{timestamp},
-				output		=> decode_base64($xml->{output}),
-			);
-			return $console_output;
-		}
-		else {
-			return undef;
-		}
-	}
+    my $self = shift;
+    my %args = validate( @_, { InstanceId => { type => SCALAR }, } );
+
+    my $xml = $self->_sign( Action => 'GetConsoleOutput', %args );
+
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        if ( grep { defined && length } $xml->{output} ) {
+            my $console_output = Net::Amazon::EC2::ConsoleOutput->new(
+                instance_id => $xml->{instanceId},
+                timestamp   => $xml->{timestamp},
+                output      => decode_base64( $xml->{output} ),
+            );
+            return $console_output;
+        }
+        else {
+            return undef;
+        }
+    }
 }
 
 =head2 get_password_data(%params)
@@ -3516,25 +3669,23 @@ Returns a Net::Amazon::EC2::InstancePassword object
 =cut
 
 sub get_password_data {
-	my $self = shift;
-	my %args = validate( @_, {
-		instanceId	=> { type => SCALAR },
-	});
+    my $self = shift;
+    my %args = validate( @_, { instanceId => { type => SCALAR }, } );
 
-	my $xml = $self->_sign(Action  => 'GetPasswordData', %args);
-	
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		my $instance_password = Net::Amazon::EC2::InstancePassword->new(
-			instance_id		=> $xml->{instanceId},
-			timestamp		=> $xml->{timestamp},
-			password_data	=> $xml->{passwordData},
-		);
- 			
- 		return $instance_password;
-	}
+    my $xml = $self->_sign( Action => 'GetPasswordData', %args );
+
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        my $instance_password = Net::Amazon::EC2::InstancePassword->new(
+            instance_id   => $xml->{instanceId},
+            timestamp     => $xml->{timestamp},
+            password_data => $xml->{passwordData},
+        );
+
+        return $instance_password;
+    }
 }
 
 =head2 modify_image_attribute(%params)
@@ -3574,30 +3725,32 @@ Returns 1 if the modification succeeds.
 =cut
 
 sub modify_image_attribute {
-	my $self = shift;
-	my %args = validate( @_, {
-		ImageId			=> { type => SCALAR },
-		Attribute 		=> { type => SCALAR },
-		OperationType	=> { type => SCALAR, optional => 1 },
-		UserId 			=> { type => SCALAR | ARRAYREF, optional => 1 },
-		UserGroup 		=> { type => SCALAR | ARRAYREF, optional => 1 },
-		ProductCode		=> { type => SCALAR, optional => 1 },
-	});
-	
-	
-	my $xml = $self->_sign(Action  => 'ModifyImageAttribute', %args);
-	
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		if ($xml->{return} eq 'true') {
-			return 1;
-		}
-		else {
-			return undef;
-		}
-	}
+    my $self = shift;
+    my %args = validate(
+        @_,
+        {
+            ImageId       => { type => SCALAR },
+            Attribute     => { type => SCALAR },
+            OperationType => { type => SCALAR, optional => 1 },
+            UserId        => { type => SCALAR | ARRAYREF, optional => 1 },
+            UserGroup     => { type => SCALAR | ARRAYREF, optional => 1 },
+            ProductCode   => { type => SCALAR, optional => 1 },
+        }
+    );
+
+    my $xml = $self->_sign( Action => 'ModifyImageAttribute', %args );
+
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        if ( $xml->{return} eq 'true' ) {
+            return 1;
+        }
+        else {
+            return undef;
+        }
+    }
 }
 
 =head2 modify_instance_attribute(%params)
@@ -3660,34 +3813,37 @@ Returns 1 if the modification succeeds.
 =cut
 
 sub modify_instance_attribute {
-	my $self = shift;
-	my %args = validate( @_, {
-		InstanceId	=> { type => SCALAR },
-		Attribute	=> { type => SCALAR },
-		Value		=> { type => SCALAR | HASHREF },
-	});
+    my $self = shift;
+    my %args = validate(
+        @_,
+        {
+            InstanceId => { type => SCALAR },
+            Attribute  => { type => SCALAR },
+            Value      => { type => SCALAR | HASHREF },
+        }
+    );
 
-    if ( ref($args{'Value'}) eq "HASH" ) {
+    if ( ref( $args{'Value'} ) eq "HASH" ) {
+
         # remove the 'Value' key and flatten the hashref
         my $href = delete $args{'Value'};
         map { $args{$_} = $href->{$_} } keys %{$href};
     }
-	
-	my $xml = $self->_sign(Action  => 'ModifyInstanceAttribute', %args);
 
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		if ($xml->{return} eq 'true') {
-			return 1;
-		}
-		else {
-			return undef;
-		}
-	}
+    my $xml = $self->_sign( Action => 'ModifyInstanceAttribute', %args );
+
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        if ( $xml->{return} eq 'true' ) {
+            return 1;
+        }
+        else {
+            return undef;
+        }
+    }
 }
-
 
 =head2 modify_snapshot_attribute(%params)
 
@@ -3723,29 +3879,31 @@ Returns 1 if the modification succeeds.
 =cut
 
 sub modify_snapshot_attribute {
-	my $self = shift;
-	my %args = validate( @_, {
-		SnapshotId		=> { type => SCALAR },
-		UserId			=> { type => SCALAR, optional => 1 },
-		UserGroup		=> { type => SCALAR, optional => 1 },
-		Attribute		=> { type => SCALAR },
-		OperationType	=> { type => SCALAR },
-	});
-	
-	
-	my $xml = $self->_sign(Action  => 'ModifySnapshotAttribute', %args);
-	
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		if ($xml->{return} eq 'true') {
-			return 1;
-		}
-		else {
-			return undef;
-		}
-	}
+    my $self = shift;
+    my %args = validate(
+        @_,
+        {
+            SnapshotId    => { type => SCALAR },
+            UserId        => { type => SCALAR, optional => 1 },
+            UserGroup     => { type => SCALAR, optional => 1 },
+            Attribute     => { type => SCALAR },
+            OperationType => { type => SCALAR },
+        }
+    );
+
+    my $xml = $self->_sign( Action => 'ModifySnapshotAttribute', %args );
+
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        if ( $xml->{return} eq 'true' ) {
+            return 1;
+        }
+        else {
+            return undef;
+        }
+    }
 }
 
 =head2 monitor_instances(%params)
@@ -3765,40 +3923,41 @@ Returns an array ref of Net::Amazon::EC2::MonitoredInstance objects
 =cut
 
 sub monitor_instances {
-	my $self = shift;
-	my %args = validate( @_, {
-		InstanceId	=> { type => ARRAYREF | SCALAR, optional => 1 },
-	});
+    my $self = shift;
+    my %args =
+      validate( @_,
+        { InstanceId => { type => ARRAYREF | SCALAR, optional => 1 }, } );
 
-	# If we have a array ref of instances lets split them out into their InstanceId.n format
-	if (ref ($args{InstanceId}) eq 'ARRAY') {
-		my $instance_ids	= delete $args{InstanceId};
-		my $count					= 1;
-		foreach my $instance_id (@{$instance_ids}) {
-			$args{"InstanceId." . $count} = $instance_id;
-			$count++;
-		}
-	}
-	
-	my $xml = $self->_sign(Action  => 'MonitorInstances', %args);
-	
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
- 		my $monitored_instances;
+# If we have a array ref of instances lets split them out into their InstanceId.n format
+    if ( ref( $args{InstanceId} ) eq 'ARRAY' ) {
+        my $instance_ids = delete $args{InstanceId};
+        my $count        = 1;
+        foreach my $instance_id ( @{$instance_ids} ) {
+            $args{ "InstanceId." . $count } = $instance_id;
+            $count++;
+        }
+    }
 
- 		foreach my $monitored_instance_item (@{$xml->{instancesSet}{item}}) {
- 			my $monitored_instance = Net::Amazon::EC2::ReservedInstance->new(
-				instance_id	=> $monitored_instance_item->{instanceId},
-				state		=> $monitored_instance_item->{monitoring}{state},
- 			);
- 			
- 			push @$monitored_instances, $monitored_instance;
- 		}
- 		
- 		return $monitored_instances;
-	}
+    my $xml = $self->_sign( Action => 'MonitorInstances', %args );
+
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        my $monitored_instances;
+
+        foreach my $monitored_instance_item ( @{ $xml->{instancesSet}{item} } )
+        {
+            my $monitored_instance = Net::Amazon::EC2::ReservedInstance->new(
+                instance_id => $monitored_instance_item->{instanceId},
+                state       => $monitored_instance_item->{monitoring}{state},
+            );
+
+            push @$monitored_instances, $monitored_instance;
+        }
+
+        return $monitored_instances;
+    }
 }
 
 =head2 purchase_reserved_instances_offering(%params)
@@ -3827,45 +3986,53 @@ Returns 1 if the reservations succeeded.
 =cut
 
 sub purchase_reserved_instances_offering {
-	my $self = shift;
-	my %args = validate( @_, {
-		ReservedInstancesOfferingId	=> { type => ARRAYREF | SCALAR },
-		InstanceCount				=> { type => ARRAYREF | SCALAR, optional => 1 },
-	});
-	
-	# If we have a array ref of reserved instance offerings lets split them out into their ReservedInstancesOfferingId.n format
-	if (ref ($args{ReservedInstancesOfferingId}) eq 'ARRAY') {
-		my $reserved_instance_offering_ids = delete $args{ReservedInstancesOfferingId};
-		my $count = 1;
-		foreach my $reserved_instance_offering_id (@{$reserved_instance_offering_ids}) {
-			$args{"ReservedInstancesOfferingId." . $count} = $reserved_instance_offering_id;
-			$count++;
-		}
-	}
+    my $self = shift;
+    my %args = validate(
+        @_,
+        {
+            ReservedInstancesOfferingId => { type => ARRAYREF | SCALAR },
+            InstanceCount => { type => ARRAYREF | SCALAR, optional => 1 },
+        }
+    );
 
-	# If we have a array ref of instance counts lets split them out into their InstanceCount.n format
-	if (ref ($args{InstanceCount}) eq 'ARRAY') {
-		my $instance_counts = delete $args{InstanceCount};
-		my $count = 1;
-		foreach my $instance_count (@{$instance_counts}) {
-			$args{"InstanceCount." . $count} = $instance_count;
-			$count++;
-		}
-	}
-	
-	my $xml = $self->_sign(Action  => 'PurchaseReservedInstancesOffering', %args);
-	
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		if ($xml->{reservedInstancesId} ) {
-			return 1;
-		}
-		else {
-			return undef;
-		}
-	}
+# If we have a array ref of reserved instance offerings lets split them out into their ReservedInstancesOfferingId.n format
+    if ( ref( $args{ReservedInstancesOfferingId} ) eq 'ARRAY' ) {
+        my $reserved_instance_offering_ids =
+          delete $args{ReservedInstancesOfferingId};
+        my $count = 1;
+        foreach my $reserved_instance_offering_id (
+            @{$reserved_instance_offering_ids} )
+        {
+            $args{ "ReservedInstancesOfferingId." . $count } =
+              $reserved_instance_offering_id;
+            $count++;
+        }
+    }
+
+# If we have a array ref of instance counts lets split them out into their InstanceCount.n format
+    if ( ref( $args{InstanceCount} ) eq 'ARRAY' ) {
+        my $instance_counts = delete $args{InstanceCount};
+        my $count           = 1;
+        foreach my $instance_count ( @{$instance_counts} ) {
+            $args{ "InstanceCount." . $count } = $instance_count;
+            $count++;
+        }
+    }
+
+    my $xml =
+      $self->_sign( Action => 'PurchaseReservedInstancesOffering', %args );
+
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        if ( $xml->{reservedInstancesId} ) {
+            return 1;
+        }
+        else {
+            return undef;
+        }
+    }
 }
 
 =head2 reboot_instances(%params)
@@ -3885,34 +4052,32 @@ Returns 1 if the reboot succeeded.
 =cut
 
 sub reboot_instances {
-	my $self = shift;
-	my %args = validate( @_, {
-		InstanceId	=> { type => SCALAR | ARRAYREF },
-	});
-	
-	# If we have a array ref of instances lets split them out into their InstanceId.n format
-	if (ref ($args{InstanceId}) eq 'ARRAY') {
-		my $instance_ids = delete $args{InstanceId};
-		my $count = 1;
-		foreach my $instance_id (@{$instance_ids}) {
-			$args{"InstanceId." . $count} = $instance_id;
-			$count++;
-		}
-	}
-	
-	my $xml = $self->_sign(Action  => 'RebootInstances', %args);
-	
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		if ($xml->{return} eq 'true') {
-			return 1;
-		}
-		else {
-			return undef;
-		}
-	}
+    my $self = shift;
+    my %args = validate( @_, { InstanceId => { type => SCALAR | ARRAYREF }, } );
+
+# If we have a array ref of instances lets split them out into their InstanceId.n format
+    if ( ref( $args{InstanceId} ) eq 'ARRAY' ) {
+        my $instance_ids = delete $args{InstanceId};
+        my $count        = 1;
+        foreach my $instance_id ( @{$instance_ids} ) {
+            $args{ "InstanceId." . $count } = $instance_id;
+            $count++;
+        }
+    }
+
+    my $xml = $self->_sign( Action => 'RebootInstances', %args );
+
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        if ( $xml->{return} eq 'true' ) {
+            return 1;
+        }
+        else {
+            return undef;
+        }
+    }
 }
 
 =head2 register_image(%params)
@@ -3974,42 +4139,58 @@ Returns the image id of the new image on EC2.
 =cut
 
 sub register_image {
-	my $self = shift;
-	my %args = validate( @_, {
-		ImageLocation		=> { type => SCALAR, optional => 1 },
-		Name				=> { type => SCALAR },
-		Description			=> { type => SCALAR, optional => 1 },
-		Architecture		=> { type => SCALAR, optional => 1 },
-		KernelId			=> { type => SCALAR, optional => 1 },
-		RamdiskId			=> { type => SCALAR, optional => 1 },
-		RootDeviceName		=> { type => SCALAR, optional => 1 },
-		BlockDeviceMapping	=> { type => ARRAYREF, optional => 1 },
-	});
+    my $self = shift;
+    my %args = validate(
+        @_,
+        {
+            ImageLocation      => { type => SCALAR,   optional => 1 },
+            Name               => { type => SCALAR },
+            Description        => { type => SCALAR,   optional => 1 },
+            Architecture       => { type => SCALAR,   optional => 1 },
+            KernelId           => { type => SCALAR,   optional => 1 },
+            RamdiskId          => { type => SCALAR,   optional => 1 },
+            RootDeviceName     => { type => SCALAR,   optional => 1 },
+            BlockDeviceMapping => { type => ARRAYREF, optional => 1 },
+        }
+    );
 
-	
-	# If we have a array ref of block devices, we need to split them up
-	if (ref ($args{BlockDeviceMapping}) eq 'ARRAY') {
-		my $block_devices = delete $args{BlockDeviceMapping};
-		my $count = 1;
-		foreach my $block_device (@{$block_devices}) {
-			$args{"BlockDeviceMapping." . $count . ".DeviceName"}				= $block_device->{deviceName} if $block_device->{deviceName};
-			$args{"BlockDeviceMapping." . $count . ".VirtualName"}				= $block_device->{virtualName} if $block_device->{virtualName};
-			$args{"BlockDeviceMapping." . $count . ".NoDevice"}					= $block_device->{noDevice} if $block_device->{noDevice};
-			$args{"BlockDeviceMapping." . $count . ".Ebs.SnapshotId"}			= $block_device->{ebs}{snapshotId} if $block_device->{ebs}{snapshotId};
-			$args{"BlockDeviceMapping." . $count . ".Ebs.VolumeSize"}			= $block_device->{ebs}{volumeSize} if $block_device->{ebs}{volumeSize};
-			$args{"BlockDeviceMapping." . $count . ".Ebs.DeleteOnTermination"}	= $block_device->{ebs}{deleteOnTermination} if $block_device->{ebs}{deleteOnTermination};
-			$count++;
-		}
-	}
+    # If we have a array ref of block devices, we need to split them up
+    if ( ref( $args{BlockDeviceMapping} ) eq 'ARRAY' ) {
+        my $block_devices = delete $args{BlockDeviceMapping};
+        my $count         = 1;
+        foreach my $block_device ( @{$block_devices} ) {
+            $args{ "BlockDeviceMapping." . $count . ".DeviceName" } =
+              $block_device->{deviceName}
+              if $block_device->{deviceName};
+            $args{ "BlockDeviceMapping." . $count . ".VirtualName" } =
+              $block_device->{virtualName}
+              if $block_device->{virtualName};
+            $args{ "BlockDeviceMapping." . $count . ".NoDevice" } =
+              $block_device->{noDevice}
+              if $block_device->{noDevice};
+            $args{ "BlockDeviceMapping." . $count . ".Ebs.SnapshotId" } =
+              $block_device->{ebs}{snapshotId}
+              if $block_device->{ebs}{snapshotId};
+            $args{ "BlockDeviceMapping." . $count . ".Ebs.VolumeSize" } =
+              $block_device->{ebs}{volumeSize}
+              if $block_device->{ebs}{volumeSize};
+            $args{  "BlockDeviceMapping." 
+                  . $count
+                  . ".Ebs.DeleteOnTermination" } =
+              $block_device->{ebs}{deleteOnTermination}
+              if $block_device->{ebs}{deleteOnTermination};
+            $count++;
+        }
+    }
 
-	my $xml	= $self->_sign(Action  => 'RegisterImage', %args);
+    my $xml = $self->_sign( Action => 'RegisterImage', %args );
 
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		return $xml->{imageId};
-	}
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        return $xml->{imageId};
+    }
 }
 
 =head2 release_address(%params)
@@ -4029,45 +4210,41 @@ Returns true if the releasing succeeded.
 =cut
 
 sub release_address {
-	my $self = shift;
-	my %args = validate( @_, {
-		PublicIp 		=> { type => SCALAR },
-	});
-	
-	my $xml = $self->_sign(Action  => 'ReleaseAddress', %args);
+    my $self = shift;
+    my %args = validate( @_, { PublicIp => { type => SCALAR }, } );
 
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		if ($xml->{return} eq 'true') {
-			return 1;
-		}
-		else {
-			return undef;
-		}
-	}
+    my $xml = $self->_sign( Action => 'ReleaseAddress', %args );
+
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        if ( $xml->{return} eq 'true' ) {
+            return 1;
+        }
+        else {
+            return undef;
+        }
+    }
 }
 
 sub release_vpc_address {
-   my $self = shift;
-   my %args = validate( @_, {
-      AllocationId       => { type => SCALAR },
-   });
+    my $self = shift;
+    my %args = validate( @_, { AllocationId => { type => SCALAR }, } );
 
-   my $xml = $self->_sign(Action  => 'ReleaseAddress', %args);
+    my $xml = $self->_sign( Action => 'ReleaseAddress', %args );
 
-   if ( grep { defined && length } $xml->{Errors} ) {
-      return $self->_parse_errors($xml);
-   }
-   else {
-      if ($xml->{return} eq 'true') {
-         return 1;
-      }
-      else {
-         return undef;
-      }
-   }
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        if ( $xml->{return} eq 'true' ) {
+            return 1;
+        }
+        else {
+            return undef;
+        }
+    }
 }
 
 =head2 reset_image_attribute(%params)
@@ -4092,25 +4269,28 @@ Returns 1 if the attribute reset succeeds.
 =cut
 
 sub reset_image_attribute {
-	my $self = shift;
-	my %args = validate( @_, {
-		ImageId			=> { type => SCALAR },
-		Attribute 		=> { type => SCALAR },
-	});
-	
-	my $xml = $self->_sign(Action  => 'ResetImageAttribute', %args);
+    my $self = shift;
+    my %args = validate(
+        @_,
+        {
+            ImageId   => { type => SCALAR },
+            Attribute => { type => SCALAR },
+        }
+    );
 
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		if ($xml->{return} eq 'true') {
-			return 1;
-		}
-		else {
-			return undef;
-		}
-	}
+    my $xml = $self->_sign( Action => 'ResetImageAttribute', %args );
+
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        if ( $xml->{return} eq 'true' ) {
+            return 1;
+        }
+        else {
+            return undef;
+        }
+    }
 }
 
 =head2 reset_instance_attribute(%params)
@@ -4142,25 +4322,28 @@ Returns 1 if the reset succeeds.
 =cut
 
 sub reset_instance_attribute {
-	my $self = shift;
-	my %args = validate( @_, {
-		InstanceId		=> { type => SCALAR },
-		Attribute 		=> { type => SCALAR },
-	});
-	
-	my $xml = $self->_sign(Action  => 'ResetInstanceAttribute', %args);
+    my $self = shift;
+    my %args = validate(
+        @_,
+        {
+            InstanceId => { type => SCALAR },
+            Attribute  => { type => SCALAR },
+        }
+    );
 
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		if ($xml->{return} eq 'true') {
-			return 1;
-		}
-		else {
-			return undef;
-		}
-	}
+    my $xml = $self->_sign( Action => 'ResetInstanceAttribute', %args );
+
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        if ( $xml->{return} eq 'true' ) {
+            return 1;
+        }
+        else {
+            return undef;
+        }
+    }
 }
 
 =head2 reset_snapshot_attribute(%params)
@@ -4187,25 +4370,28 @@ Returns 1 if the attribute reset succeeds.
 =cut
 
 sub reset_snapshot_attribute {
-	my $self = shift;
-	my %args = validate( @_, {
-		SnapshotId	=> { type => SCALAR },
-		Attribute	=> { type => SCALAR },
-	});
-	
-	my $xml = $self->_sign(Action  => 'ResetSnapshotAttribute', %args);
+    my $self = shift;
+    my %args = validate(
+        @_,
+        {
+            SnapshotId => { type => SCALAR },
+            Attribute  => { type => SCALAR },
+        }
+    );
 
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		if ($xml->{return} eq 'true') {
-			return 1;
-		}
-		else {
-			return undef;
-		}
-	}
+    my $xml = $self->_sign( Action => 'ResetSnapshotAttribute', %args );
+
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        if ( $xml->{return} eq 'true' ) {
+            return 1;
+        }
+        else {
+            return undef;
+        }
+    }
 }
 
 =head2 revoke_security_group_ingress(%params)
@@ -4251,39 +4437,41 @@ Returns 1 if rule is revoked successfully.
 =cut
 
 sub revoke_security_group_ingress {
-	my $self = shift;
-	my %args = validate( @_, {
-								GroupName					=> { type => SCALAR },
-								SourceSecurityGroupName 	=> { 
-																	type => SCALAR,
-																	depends => ['SourceSecurityGroupOwnerId'],
-																	optional => 1 ,
-								},
-								SourceSecurityGroupOwnerId	=> { type => SCALAR, optional => 1 },
-								IpProtocol 					=> { 
-																	type => SCALAR,
-																	depends => ['FromPort', 'ToPort', 'CidrIp'],
-																	optional => 1 
-								},
-								FromPort 					=> { type => SCALAR, optional => 1 },
-								ToPort 						=> { type => SCALAR, optional => 1 },
-								CidrIp						=> { type => SCALAR, optional => 1 },
-	});
-	
-	
-	my $xml = $self->_sign(Action  => 'RevokeSecurityGroupIngress', %args);
+    my $self = shift;
+    my %args = validate(
+        @_,
+        {
+            GroupName               => { type => SCALAR },
+            SourceSecurityGroupName => {
+                type     => SCALAR,
+                depends  => ['SourceSecurityGroupOwnerId'],
+                optional => 1,
+            },
+            SourceSecurityGroupOwnerId => { type => SCALAR, optional => 1 },
+            IpProtocol                 => {
+                type     => SCALAR,
+                depends  => [ 'FromPort', 'ToPort', 'CidrIp' ],
+                optional => 1
+            },
+            FromPort => { type => SCALAR, optional => 1 },
+            ToPort   => { type => SCALAR, optional => 1 },
+            CidrIp   => { type => SCALAR, optional => 1 },
+        }
+    );
 
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		if ($xml->{return} eq 'true') {
-			return 1;
-		}
-		else {
-			return undef;
-		}
-	}
+    my $xml = $self->_sign( Action => 'RevokeSecurityGroupIngress', %args );
+
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        if ( $xml->{return} eq 'true' ) {
+            return 1;
+        }
+        else {
+            return undef;
+        }
+    }
 }
 
 =head2 run_instances(%params)
@@ -4454,235 +4642,275 @@ Returns a Net::Amazon::EC2::ReservationInfo object
 =cut 
 
 sub run_instances {
-	my $self = shift;
-	my %args = validate( @_, {
-		ImageId											=> { type => SCALAR },
-		MinCount										=> { type => SCALAR },
-		MaxCount										=> { type => SCALAR },
-		KeyName											=> { type => SCALAR, optional => 1 },
-		SecurityGroup									=> { type => SCALAR | ARRAYREF, optional => 1 },
-		SecurityGroupId									=> { type => SCALAR | ARRAYREF, optional => 1 },
-		AddressingType									=> { type => SCALAR, optional => 1 },
-		AdditionalInfo									=> { type => SCALAR, optional => 1 },
-		UserData										=> { type => SCALAR, optional => 1 },
-		InstanceType									=> { type => SCALAR, optional => 1 },
-		'Placement.AvailabilityZone'					=> { type => SCALAR, optional => 1 },
-		KernelId										=> { type => SCALAR, optional => 1 },
-		RamdiskId										=> { type => SCALAR, optional => 1 },
-		'BlockDeviceMapping.VirtualName'				=> { type => SCALAR | ARRAYREF, optional => 1 },
-		'BlockDeviceMapping.DeviceName'					=> { type => SCALAR | ARRAYREF, optional => 1 },
-		'BlockDeviceMapping.Ebs.SnapshotId'				=> { type => SCALAR | ARRAYREF, optional => 1 },
-		'BlockDeviceMapping.Ebs.VolumeSize'				=> { type => SCALAR | ARRAYREF, optional => 1 },
-		'BlockDeviceMapping.Ebs.VolumeType'				=> { type => SCALAR | ARRAYREF, optional => 1 },
-		'BlockDeviceMapping.Ebs.DeleteOnTermination'	=> { type => SCALAR | ARRAYREF, optional => 1 },
-		Encoding										=> { type => SCALAR, optional => 1 },
-		Version											=> { type => SCALAR, optional => 1 },
-		'Monitoring.Enabled'							=> { type => SCALAR, optional => 1 },
-		SubnetId										=> { type => SCALAR, optional => 1 },
-		DisableApiTermination							=> { type => SCALAR, optional => 1 },
-		InstanceInitiatedShutdownBehavior				=> { type => SCALAR, optional => 1 },
-		ClientToken										=> { type => SCALAR, optional => 1 },
-		EbsOptimized									=> { type => SCALAR, optional => 1 },
-		PrivateIpAddress								=> { type => SCALAR, optional => 1 },
-		'IamInstanceProfile.Name'								=> { type => SCALAR, optional => 1 },
-		'IamInstanceProfile.Arn'								=> { type => SCALAR, optional => 1 },
+    my $self = shift;
+    my %args = validate(
+        @_,
+        {
+            ImageId         => { type => SCALAR },
+            MinCount        => { type => SCALAR },
+            MaxCount        => { type => SCALAR },
+            KeyName         => { type => SCALAR, optional => 1 },
+            SecurityGroup   => { type => SCALAR | ARRAYREF, optional => 1 },
+            SecurityGroupId => { type => SCALAR | ARRAYREF, optional => 1 },
+            AddressingType  => { type => SCALAR, optional => 1 },
+            AdditionalInfo  => { type => SCALAR, optional => 1 },
+            UserData        => { type => SCALAR, optional => 1 },
+            InstanceType    => { type => SCALAR, optional => 1 },
+            'Placement.AvailabilityZone' => { type => SCALAR, optional => 1 },
+            KernelId  => { type => SCALAR, optional => 1 },
+            RamdiskId => { type => SCALAR, optional => 1 },
+            'BlockDeviceMapping.VirtualName' =>
+              { type => SCALAR | ARRAYREF, optional => 1 },
+            'BlockDeviceMapping.DeviceName' =>
+              { type => SCALAR | ARRAYREF, optional => 1 },
+            'BlockDeviceMapping.Ebs.SnapshotId' =>
+              { type => SCALAR | ARRAYREF, optional => 1 },
+            'BlockDeviceMapping.Ebs.VolumeSize' =>
+              { type => SCALAR | ARRAYREF, optional => 1 },
+            'BlockDeviceMapping.Ebs.VolumeType' =>
+              { type => SCALAR | ARRAYREF, optional => 1 },
+            'BlockDeviceMapping.Ebs.DeleteOnTermination' =>
+              { type => SCALAR | ARRAYREF, optional => 1 },
+            Encoding              => { type => SCALAR, optional => 1 },
+            Version               => { type => SCALAR, optional => 1 },
+            'Monitoring.Enabled'  => { type => SCALAR, optional => 1 },
+            SubnetId              => { type => SCALAR, optional => 1 },
+            DisableApiTermination => { type => SCALAR, optional => 1 },
+            InstanceInitiatedShutdownBehavior =>
+              { type => SCALAR, optional => 1 },
+            ClientToken               => { type => SCALAR, optional => 1 },
+            EbsOptimized              => { type => SCALAR, optional => 1 },
+            PrivateIpAddress          => { type => SCALAR, optional => 1 },
+            'IamInstanceProfile.Name' => { type => SCALAR, optional => 1 },
+            'IamInstanceProfile.Arn'  => { type => SCALAR, optional => 1 },
 
-	});
-	
-	# If we have a array ref of instances lets split them out into their SecurityGroup.n format
-	if (ref ($args{SecurityGroup}) eq 'ARRAY') {
-		my $security_groups	= delete $args{SecurityGroup};
-		my $count			= 1;
-		foreach my $security_group (@{$security_groups}) {
-			$args{"SecurityGroup." . $count} = $security_group;
-			$count++;
-		}
-	}
+        }
+    );
 
-	# If we have a array ref of instances lets split them out into their SecurityGroupId.n format
-	if (ref ($args{SecurityGroupId}) eq 'ARRAY') {
-		my $security_groups	= delete $args{SecurityGroupId};
-		my $count			= 1;
-		foreach my $security_group (@{$security_groups}) {
-			$args{"SecurityGroupId." . $count} = $security_group;
-			$count++;
-		}
-	}
+# If we have a array ref of instances lets split them out into their SecurityGroup.n format
+    if ( ref( $args{SecurityGroup} ) eq 'ARRAY' ) {
+        my $security_groups = delete $args{SecurityGroup};
+        my $count           = 1;
+        foreach my $security_group ( @{$security_groups} ) {
+            $args{ "SecurityGroup." . $count } = $security_group;
+            $count++;
+        }
+    }
 
-	# If we have a array ref of block device virtual names lets split them out into their BlockDeviceMapping.n.VirtualName format
-	if (ref ($args{'BlockDeviceMapping.VirtualName'}) eq 'ARRAY') {
-		my $virtual_names	= delete $args{'BlockDeviceMapping.VirtualName'};
-		my $count			= 1;
-		foreach my $virtual_name (@{$virtual_names}) {
-			$args{"BlockDeviceMapping." . $count . ".VirtualName"} = $virtual_name if defined($virtual_name);
-			$count++;
-		}
-	}
+# If we have a array ref of instances lets split them out into their SecurityGroupId.n format
+    if ( ref( $args{SecurityGroupId} ) eq 'ARRAY' ) {
+        my $security_groups = delete $args{SecurityGroupId};
+        my $count           = 1;
+        foreach my $security_group ( @{$security_groups} ) {
+            $args{ "SecurityGroupId." . $count } = $security_group;
+            $count++;
+        }
+    }
 
-	# If we have a array ref of block device virtual names lets split them out into their BlockDeviceMapping.n.DeviceName format
-	if (ref ($args{'BlockDeviceMapping.DeviceName'}) eq 'ARRAY') {
-		my $device_names	= delete $args{'BlockDeviceMapping.DeviceName'};
-		my $count			= 1;
-		foreach my $device_name (@{$device_names}) {
-			$args{"BlockDeviceMapping." . $count . ".DeviceName"} = $device_name if defined($device_name);
-			$count++;
-		}
-	}
+# If we have a array ref of block device virtual names lets split them out into their BlockDeviceMapping.n.VirtualName format
+    if ( ref( $args{'BlockDeviceMapping.VirtualName'} ) eq 'ARRAY' ) {
+        my $virtual_names = delete $args{'BlockDeviceMapping.VirtualName'};
+        my $count         = 1;
+        foreach my $virtual_name ( @{$virtual_names} ) {
+            $args{ "BlockDeviceMapping." . $count . ".VirtualName" } =
+              $virtual_name
+              if defined($virtual_name);
+            $count++;
+        }
+    }
 
-	# If we have a array ref of block device EBS Snapshots lets split them out into their BlockDeviceMapping.n.Ebs.SnapshotId format
-	if (ref ($args{'BlockDeviceMapping.Ebs.SnapshotId'}) eq 'ARRAY') {
-		my $snapshot_ids	= delete $args{'BlockDeviceMapping.Ebs.SnapshotId'};
-		my $count			= 1;
-		foreach my $snapshot_id (@{$snapshot_ids}) {
-			$args{"BlockDeviceMapping." . $count . ".Ebs.SnapshotId"} = $snapshot_id if defined($snapshot_id);
-			$count++;
-		}
-	}
+# If we have a array ref of block device virtual names lets split them out into their BlockDeviceMapping.n.DeviceName format
+    if ( ref( $args{'BlockDeviceMapping.DeviceName'} ) eq 'ARRAY' ) {
+        my $device_names = delete $args{'BlockDeviceMapping.DeviceName'};
+        my $count        = 1;
+        foreach my $device_name ( @{$device_names} ) {
+            $args{ "BlockDeviceMapping." . $count . ".DeviceName" } =
+              $device_name
+              if defined($device_name);
+            $count++;
+        }
+    }
 
-	# If we have a array ref of block device EBS VolumeSizes lets split them out into their BlockDeviceMapping.n.Ebs.VolumeSize format
-	if (ref ($args{'BlockDeviceMapping.Ebs.VolumeSize'}) eq 'ARRAY') {
-		my $volume_sizes	= delete $args{'BlockDeviceMapping.Ebs.VolumeSize'};
-		my $count			= 1;
-		foreach my $volume_size (@{$volume_sizes}) {
-			$args{"BlockDeviceMapping." . $count . ".Ebs.VolumeSize"} = $volume_size if defined($volume_size);
-			$count++;
-		}
-	}
+# If we have a array ref of block device EBS Snapshots lets split them out into their BlockDeviceMapping.n.Ebs.SnapshotId format
+    if ( ref( $args{'BlockDeviceMapping.Ebs.SnapshotId'} ) eq 'ARRAY' ) {
+        my $snapshot_ids = delete $args{'BlockDeviceMapping.Ebs.SnapshotId'};
+        my $count        = 1;
+        foreach my $snapshot_id ( @{$snapshot_ids} ) {
+            $args{ "BlockDeviceMapping." . $count . ".Ebs.SnapshotId" } =
+              $snapshot_id
+              if defined($snapshot_id);
+            $count++;
+        }
+    }
 
-	# If we have a array ref of block device EBS VolumeTypes lets split them out into their BlockDeviceMapping.n.Ebs.VolumeType format
-	if (ref ($args{'BlockDeviceMapping.Ebs.VolumeType'}) eq 'ARRAY') {
-		my $volume_types	= delete $args{'BlockDeviceMapping.Ebs.VolumeType'};
-		my $count			= 1;
-		foreach my $volume_type (@{$volume_types}) {
-			$args{"BlockDeviceMapping." . $count . ".Ebs.VolumeType"} = $volume_type if defined($volume_type);
-			$count++;
-		}
-	}
+# If we have a array ref of block device EBS VolumeSizes lets split them out into their BlockDeviceMapping.n.Ebs.VolumeSize format
+    if ( ref( $args{'BlockDeviceMapping.Ebs.VolumeSize'} ) eq 'ARRAY' ) {
+        my $volume_sizes = delete $args{'BlockDeviceMapping.Ebs.VolumeSize'};
+        my $count        = 1;
+        foreach my $volume_size ( @{$volume_sizes} ) {
+            $args{ "BlockDeviceMapping." . $count . ".Ebs.VolumeSize" } =
+              $volume_size
+              if defined($volume_size);
+            $count++;
+        }
+    }
 
-	# If we have a array ref of block device EBS DeleteOnTerminations lets split them out into their BlockDeviceMapping.n.Ebs.DeleteOnTermination format
-	if (ref ($args{'BlockDeviceMapping.Ebs.DeleteOnTermination'}) eq 'ARRAY') {
-		my $terminations	= delete $args{'BlockDeviceMapping.Ebs.DeleteOnTermination'};
-		my $count			= 1;
-		foreach my $termination (@{$terminations}) {
-			$args{"BlockDeviceMapping." . $count . ".Ebs.DeleteOnTermination"} = $termination;
-			$count++;
-		}
-	}
+# If we have a array ref of block device EBS VolumeTypes lets split them out into their BlockDeviceMapping.n.Ebs.VolumeType format
+    if ( ref( $args{'BlockDeviceMapping.Ebs.VolumeType'} ) eq 'ARRAY' ) {
+        my $volume_types = delete $args{'BlockDeviceMapping.Ebs.VolumeType'};
+        my $count        = 1;
+        foreach my $volume_type ( @{$volume_types} ) {
+            $args{ "BlockDeviceMapping." . $count . ".Ebs.VolumeType" } =
+              $volume_type
+              if defined($volume_type);
+            $count++;
+        }
+    }
 
-	my $xml = $self->_sign(Action  => 'RunInstances', %args);
-	
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		my $group_sets=[];
-		foreach my $group_arr (@{$xml->{groupSet}{item}}) {
-			my $group = Net::Amazon::EC2::GroupSet->new(
-				group_id => $group_arr->{groupId},
-				group_name => $group_arr->{groupName},
-			);
-			push @$group_sets, $group;
-		}
+# If we have a array ref of block device EBS DeleteOnTerminations lets split them out into their BlockDeviceMapping.n.Ebs.DeleteOnTermination format
+    if ( ref( $args{'BlockDeviceMapping.Ebs.DeleteOnTermination'} ) eq 'ARRAY' )
+    {
+        my $terminations =
+          delete $args{'BlockDeviceMapping.Ebs.DeleteOnTermination'};
+        my $count = 1;
+        foreach my $termination ( @{$terminations} ) {
+            $args{  "BlockDeviceMapping." . $count
+                  . ".Ebs.DeleteOnTermination" } = $termination;
+            $count++;
+        }
+    }
 
-		my $running_instances;
-		foreach my $instance_elem (@{$xml->{instancesSet}{item}}) {
-			my $instance_state_type = Net::Amazon::EC2::InstanceState->new(
-				code	=> $instance_elem->{instanceState}{code},
-				name	=> $instance_elem->{instanceState}{name},
-			);
-			
-			my $product_codes;
-			my $state_reason;
-			my $block_device_mappings;
-			
-			if (grep { defined && length } $instance_elem->{productCodes} ) {
-				foreach my $pc (@{$instance_elem->{productCodes}{item}}) {
-					my $product_code = Net::Amazon::EC2::ProductCode->new( product_code => $pc->{productCode} );
-					push @$product_codes, $product_code;
-				}
-			}
+    my $xml = $self->_sign( Action => 'RunInstances', %args );
 
-			unless ( grep { defined && length } $instance_elem->{reason} and ref $instance_elem->{reason} ne 'HASH' ) {
-				$instance_elem->{reason} = undef;
-			}
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        my $group_sets = [];
+        foreach my $group_arr ( @{ $xml->{groupSet}{item} } ) {
+            my $group = Net::Amazon::EC2::GroupSet->new(
+                group_id   => $group_arr->{groupId},
+                group_name => $group_arr->{groupName},
+            );
+            push @$group_sets, $group;
+        }
 
-			unless ( grep { defined && length } $instance_elem->{privateDnsName} and ref $instance_elem->{privateDnsName} ne 'HASH') {
-				$instance_elem->{privateDnsName} = undef;
-			}
+        my $running_instances;
+        foreach my $instance_elem ( @{ $xml->{instancesSet}{item} } ) {
+            my $instance_state_type = Net::Amazon::EC2::InstanceState->new(
+                code => $instance_elem->{instanceState}{code},
+                name => $instance_elem->{instanceState}{name},
+            );
 
-			unless ( grep { defined && length } $instance_elem->{dnsName} and ref $instance_elem->{dnsName} ne 'HASH') {
-				$instance_elem->{dnsName} = undef;
-			}
+            my $product_codes;
+            my $state_reason;
+            my $block_device_mappings;
 
-			if ( grep { defined && length } $instance_elem->{stateReason} ) {
-				$state_reason = Net::Amazon::EC2::StateReason->new(
-					code	=> $instance_elem->{stateReason}{code},
-					message	=> $instance_elem->{stateReason}{message},
-				);
-			}
+            if ( grep { defined && length } $instance_elem->{productCodes} ) {
+                foreach my $pc ( @{ $instance_elem->{productCodes}{item} } ) {
+                    my $product_code =
+                      Net::Amazon::EC2::ProductCode->new(
+                        product_code => $pc->{productCode} );
+                    push @$product_codes, $product_code;
+                }
+            }
 
-			if ( grep { defined && length } $instance_elem->{blockDeviceMapping} ) {
-				foreach my $bdm ( @{$instance_elem->{blockDeviceMapping}{item}} ) {
-					my $ebs_block_device_mapping = Net::Amazon::EC2::EbsInstanceBlockDeviceMapping->new(
-						volume_id				=> $bdm->{ebs}{volumeId},
-						status					=> $bdm->{ebs}{status},
-						attach_time				=> $bdm->{ebs}{attachTime},
-						delete_on_termination	=> $bdm->{ebs}{deleteOnTermination},							
-					);
-					
-					my $block_device_mapping = Net::Amazon::EC2::BlockDeviceMapping->new(
-						ebs						=> $ebs_block_device_mapping,
-						device_name				=> $bdm->{deviceName},
-					);
-					push @$block_device_mappings, $block_device_mapping;
-				}
-			}
+            unless ( grep { defined && length } $instance_elem->{reason}
+                and ref $instance_elem->{reason} ne 'HASH' )
+            {
+                $instance_elem->{reason} = undef;
+            }
 
-			my $placement_response = Net::Amazon::EC2::PlacementResponse->new( availability_zone => $instance_elem->{placement}{availabilityZone} );
-			
-			my $running_instance = Net::Amazon::EC2::RunningInstances->new(
-				ami_launch_index		=> $instance_elem->{amiLaunchIndex},
-				dns_name				=> $instance_elem->{dnsName},
-				image_id				=> $instance_elem->{imageId},
-				kernel_id				=> $instance_elem->{kernelId},
-				ramdisk_id				=> $instance_elem->{ramdiskId},
-				instance_id				=> $instance_elem->{instanceId},
-				instance_state			=> $instance_state_type,
-				instance_type			=> $instance_elem->{instanceType},
-				key_name				=> $instance_elem->{keyName},
-				launch_time				=> $instance_elem->{launchTime},
-				placement				=> $placement_response,
-				private_dns_name		=> $instance_elem->{privateDnsName},
-				reason					=> $instance_elem->{reason},
-				platform				=> $instance_elem->{platform},
-				monitoring				=> $instance_elem->{monitoring}{state},
-				subnet_id				=> $instance_elem->{subnetId},
-				vpc_id					=> $instance_elem->{vpcId},
-				private_ip_address		=> $instance_elem->{privateIpAddress},
-				ip_address				=> $instance_elem->{ipAddress},
-				architecture			=> $instance_elem->{architecture},
-				root_device_name		=> $instance_elem->{rootDeviceName},
-				root_device_type		=> $instance_elem->{rootDeviceType},
-				block_device_mapping	=> $block_device_mappings,
-				state_reason			=> $state_reason,
-			);
+            unless ( grep { defined && length } $instance_elem->{privateDnsName}
+                and ref $instance_elem->{privateDnsName} ne 'HASH' )
+            {
+                $instance_elem->{privateDnsName} = undef;
+            }
 
-			if ($product_codes) {
-				$running_instance->product_codes($product_codes);
-			}
-			
-			push @$running_instances, $running_instance;
-		}
-		
-		my $reservation = Net::Amazon::EC2::ReservationInfo->new(
-			reservation_id	=> $xml->{reservationId},
-			owner_id		=> $xml->{ownerId},
-			group_set		=> $group_sets,
-			instances_set	=> $running_instances,
-		);
-		
-		return $reservation;
-	}
+            unless ( grep { defined && length } $instance_elem->{dnsName}
+                and ref $instance_elem->{dnsName} ne 'HASH' )
+            {
+                $instance_elem->{dnsName} = undef;
+            }
+
+            if ( grep { defined && length } $instance_elem->{stateReason} ) {
+                $state_reason = Net::Amazon::EC2::StateReason->new(
+                    code    => $instance_elem->{stateReason}{code},
+                    message => $instance_elem->{stateReason}{message},
+                );
+            }
+
+            if ( grep { defined && length }
+                $instance_elem->{blockDeviceMapping} )
+            {
+                foreach
+                  my $bdm ( @{ $instance_elem->{blockDeviceMapping}{item} } )
+                {
+                    my $ebs_block_device_mapping =
+                      Net::Amazon::EC2::EbsInstanceBlockDeviceMapping->new(
+                        volume_id   => $bdm->{ebs}{volumeId},
+                        status      => $bdm->{ebs}{status},
+                        attach_time => $bdm->{ebs}{attachTime},
+                        delete_on_termination =>
+                          $bdm->{ebs}{deleteOnTermination},
+                      );
+
+                    my $block_device_mapping =
+                      Net::Amazon::EC2::BlockDeviceMapping->new(
+                        ebs         => $ebs_block_device_mapping,
+                        device_name => $bdm->{deviceName},
+                      );
+                    push @$block_device_mappings, $block_device_mapping;
+                }
+            }
+
+            my $placement_response =
+              Net::Amazon::EC2::PlacementResponse->new( availability_zone =>
+                  $instance_elem->{placement}{availabilityZone} );
+
+            my $running_instance = Net::Amazon::EC2::RunningInstances->new(
+                ami_launch_index     => $instance_elem->{amiLaunchIndex},
+                dns_name             => $instance_elem->{dnsName},
+                image_id             => $instance_elem->{imageId},
+                kernel_id            => $instance_elem->{kernelId},
+                ramdisk_id           => $instance_elem->{ramdiskId},
+                instance_id          => $instance_elem->{instanceId},
+                instance_state       => $instance_state_type,
+                instance_type        => $instance_elem->{instanceType},
+                key_name             => $instance_elem->{keyName},
+                launch_time          => $instance_elem->{launchTime},
+                placement            => $placement_response,
+                private_dns_name     => $instance_elem->{privateDnsName},
+                reason               => $instance_elem->{reason},
+                platform             => $instance_elem->{platform},
+                monitoring           => $instance_elem->{monitoring}{state},
+                subnet_id            => $instance_elem->{subnetId},
+                vpc_id               => $instance_elem->{vpcId},
+                private_ip_address   => $instance_elem->{privateIpAddress},
+                ip_address           => $instance_elem->{ipAddress},
+                architecture         => $instance_elem->{architecture},
+                root_device_name     => $instance_elem->{rootDeviceName},
+                root_device_type     => $instance_elem->{rootDeviceType},
+                block_device_mapping => $block_device_mappings,
+                state_reason         => $state_reason,
+            );
+
+            if ($product_codes) {
+                $running_instance->product_codes($product_codes);
+            }
+
+            push @$running_instances, $running_instance;
+        }
+
+        my $reservation = Net::Amazon::EC2::ReservationInfo->new(
+            reservation_id => $xml->{reservationId},
+            owner_id       => $xml->{ownerId},
+            group_set      => $group_sets,
+            instances_set  => $running_instances,
+        );
+
+        return $reservation;
+    }
 }
 
 =head2 start_instances(%params)
@@ -4702,50 +4930,48 @@ Returns an array ref of Net::Amazon::EC2::InstanceStateChange objects.
 =cut
 
 sub start_instances {
-	my $self = shift;
-	my %args = validate( @_, {
-		InstanceId	=> { type => SCALAR | ARRAYREF },
-	});
-	
-	# If we have a array ref of instances lets split them out into their InstanceId.n format
-	if (ref ($args{InstanceId}) eq 'ARRAY') {
-		my $instance_ids	= delete $args{InstanceId};
-		my $count			= 1;
-		foreach my $instance_id (@{$instance_ids}) {
-			$args{"InstanceId." . $count} = $instance_id;
-			$count++;
-		}
-	}
-	
-	my $xml = $self->_sign(Action  => 'StartInstances', %args);	
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		my $started_instances;
-		
-		foreach my $inst (@{$xml->{instancesSet}{item}}) {
-			my $previous_state = Net::Amazon::EC2::InstanceState->new(
-				code	=> $inst->{previousState}{code},
-				name	=> $inst->{previousState}{name},
-			);
-			
-			my $current_state = Net::Amazon::EC2::InstanceState->new(
-				code	=> $inst->{currentState}{code},
-				name	=> $inst->{currentState}{name},
-			);
+    my $self = shift;
+    my %args = validate( @_, { InstanceId => { type => SCALAR | ARRAYREF }, } );
 
-			my $started_instance = Net::Amazon::EC2::InstanceStateChange->new(
-				instance_id		=> $inst->{instanceId},
-				previous_state	=> $previous_state,
-				current_state	=> $current_state,
-			);
-			
-			push @$started_instances, $started_instance;
-		}
-		
-		return $started_instances;
-	}
+# If we have a array ref of instances lets split them out into their InstanceId.n format
+    if ( ref( $args{InstanceId} ) eq 'ARRAY' ) {
+        my $instance_ids = delete $args{InstanceId};
+        my $count        = 1;
+        foreach my $instance_id ( @{$instance_ids} ) {
+            $args{ "InstanceId." . $count } = $instance_id;
+            $count++;
+        }
+    }
+
+    my $xml = $self->_sign( Action => 'StartInstances', %args );
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        my $started_instances;
+
+        foreach my $inst ( @{ $xml->{instancesSet}{item} } ) {
+            my $previous_state = Net::Amazon::EC2::InstanceState->new(
+                code => $inst->{previousState}{code},
+                name => $inst->{previousState}{name},
+            );
+
+            my $current_state = Net::Amazon::EC2::InstanceState->new(
+                code => $inst->{currentState}{code},
+                name => $inst->{currentState}{name},
+            );
+
+            my $started_instance = Net::Amazon::EC2::InstanceStateChange->new(
+                instance_id    => $inst->{instanceId},
+                previous_state => $previous_state,
+                current_state  => $current_state,
+            );
+
+            push @$started_instances, $started_instance;
+        }
+
+        return $started_instances;
+    }
 }
 
 =head2 stop_instances(%params)
@@ -4773,51 +4999,54 @@ Returns an array ref of Net::Amazon::EC2::InstanceStateChange objects.
 =cut
 
 sub stop_instances {
-	my $self = shift;
-	my %args = validate( @_, {
-		InstanceId	=> { type => SCALAR | ARRAYREF },
-		Force		=> { type => SCALAR, optional => 1 },
-	});
-	
-	# If we have a array ref of instances lets split them out into their InstanceId.n format
-	if (ref ($args{InstanceId}) eq 'ARRAY') {
-		my $instance_ids	= delete $args{InstanceId};
-		my $count			= 1;
-		foreach my $instance_id (@{$instance_ids}) {
-			$args{"InstanceId." . $count} = $instance_id;
-			$count++;
-		}
-	}
-	
-	my $xml = $self->_sign(Action  => 'StopInstances', %args);	
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		my $stopped_instances;
-		
-		foreach my $inst (@{$xml->{instancesSet}{item}}) {
-			my $previous_state = Net::Amazon::EC2::InstanceState->new(
-				code	=> $inst->{previousState}{code},
-				name	=> $inst->{previousState}{name},
-			);
-			
-			my $current_state = Net::Amazon::EC2::InstanceState->new(
-				code	=> $inst->{currentState}{code},
-				name	=> $inst->{currentState}{name},
-			);
+    my $self = shift;
+    my %args = validate(
+        @_,
+        {
+            InstanceId => { type => SCALAR | ARRAYREF },
+            Force      => { type => SCALAR, optional => 1 },
+        }
+    );
 
-			my $stopped_instance = Net::Amazon::EC2::InstanceStateChange->new(
-				instance_id		=> $inst->{instanceId},
-				previous_state	=> $previous_state,
-				current_state	=> $current_state,
-			);
-			
-			push @$stopped_instances, $stopped_instance;
-		}
-		
-		return $stopped_instances;
-	}
+# If we have a array ref of instances lets split them out into their InstanceId.n format
+    if ( ref( $args{InstanceId} ) eq 'ARRAY' ) {
+        my $instance_ids = delete $args{InstanceId};
+        my $count        = 1;
+        foreach my $instance_id ( @{$instance_ids} ) {
+            $args{ "InstanceId." . $count } = $instance_id;
+            $count++;
+        }
+    }
+
+    my $xml = $self->_sign( Action => 'StopInstances', %args );
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        my $stopped_instances;
+
+        foreach my $inst ( @{ $xml->{instancesSet}{item} } ) {
+            my $previous_state = Net::Amazon::EC2::InstanceState->new(
+                code => $inst->{previousState}{code},
+                name => $inst->{previousState}{name},
+            );
+
+            my $current_state = Net::Amazon::EC2::InstanceState->new(
+                code => $inst->{currentState}{code},
+                name => $inst->{currentState}{name},
+            );
+
+            my $stopped_instance = Net::Amazon::EC2::InstanceStateChange->new(
+                instance_id    => $inst->{instanceId},
+                previous_state => $previous_state,
+                current_state  => $current_state,
+            );
+
+            push @$stopped_instances, $stopped_instance;
+        }
+
+        return $stopped_instances;
+    }
 }
 
 =head2 terminate_instances(%params)
@@ -4837,54 +5066,53 @@ Returns an array ref of Net::Amazon::EC2::InstanceStateChange objects.
 =cut
 
 sub terminate_instances {
-	my $self = shift;
-	my %args = validate( @_, {
-		InstanceId => { type => SCALAR | ARRAYREF },
-	});
-	
-	# If we have a array ref of instances lets split them out into their InstanceId.n format
-	if (ref ($args{InstanceId}) eq 'ARRAY') {
-		my $instance_ids	= delete $args{InstanceId};
-		my $count			= 1;
-		foreach my $instance_id (@{$instance_ids}) {
-			$args{"InstanceId." . $count} = $instance_id;
-			$count++;
-		}
-	}
-	
-	my $xml = $self->_sign(Action  => 'TerminateInstances', %args);	
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
-		my $terminated_instances;
-		
-		foreach my $inst (@{$xml->{instancesSet}{item}}) {
-			my $previous_state = Net::Amazon::EC2::InstanceState->new(
-				code	=> $inst->{previousState}{code},
-				name	=> $inst->{previousState}{name},
-			);
-			
-			my $current_state = Net::Amazon::EC2::InstanceState->new(
-				code	=> $inst->{currentState}{code},
-				name	=> $inst->{currentState}{name},
-			);
+    my $self = shift;
+    my %args = validate( @_, { InstanceId => { type => SCALAR | ARRAYREF }, } );
 
-			# Note, this is a bit of a backwards incompatible change in so much as I am changing
-			# return class for this.  I hate to do it but I need to be consistent with this
-			# now being a instance stage change object.  This used to be a 
-			# Net::Amazon::EC2::TerminateInstancesResponse object.
-			my $terminated_instance = Net::Amazon::EC2::InstanceStateChange->new(
-				instance_id		=> $inst->{instanceId},
-				previous_state	=> $previous_state,
-				current_state	=> $current_state,
-			);
-			
-			push @$terminated_instances, $terminated_instance;
-		}
-	
-		return $terminated_instances;
-	}
+# If we have a array ref of instances lets split them out into their InstanceId.n format
+    if ( ref( $args{InstanceId} ) eq 'ARRAY' ) {
+        my $instance_ids = delete $args{InstanceId};
+        my $count        = 1;
+        foreach my $instance_id ( @{$instance_ids} ) {
+            $args{ "InstanceId." . $count } = $instance_id;
+            $count++;
+        }
+    }
+
+    my $xml = $self->_sign( Action => 'TerminateInstances', %args );
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        my $terminated_instances;
+
+        foreach my $inst ( @{ $xml->{instancesSet}{item} } ) {
+            my $previous_state = Net::Amazon::EC2::InstanceState->new(
+                code => $inst->{previousState}{code},
+                name => $inst->{previousState}{name},
+            );
+
+            my $current_state = Net::Amazon::EC2::InstanceState->new(
+                code => $inst->{currentState}{code},
+                name => $inst->{currentState}{name},
+            );
+
+# Note, this is a bit of a backwards incompatible change in so much as I am changing
+# return class for this.  I hate to do it but I need to be consistent with this
+# now being a instance stage change object.  This used to be a
+# Net::Amazon::EC2::TerminateInstancesResponse object.
+            my $terminated_instance =
+              Net::Amazon::EC2::InstanceStateChange->new(
+                instance_id    => $inst->{instanceId},
+                previous_state => $previous_state,
+                current_state  => $current_state,
+              );
+
+            push @$terminated_instances, $terminated_instance;
+        }
+
+        return $terminated_instances;
+    }
 }
 
 =head2 unmonitor_instances(%params)
@@ -4904,40 +5132,41 @@ Returns an array ref of Net::Amazon::EC2::MonitoredInstance objects
 =cut
 
 sub unmonitor_instances {
-	my $self = shift;
-	my %args = validate( @_, {
-		InstanceId	=> { type => ARRAYREF | SCALAR, optional => 1 },
-	});
+    my $self = shift;
+    my %args =
+      validate( @_,
+        { InstanceId => { type => ARRAYREF | SCALAR, optional => 1 }, } );
 
-	# If we have a array ref of instances lets split them out into their InstanceId.n format
-	if (ref ($args{InstanceId}) eq 'ARRAY') {
-		my $instance_ids	= delete $args{InstanceId};
-		my $count					= 1;
-		foreach my $instance_id (@{$instance_ids}) {
-			$args{"InstanceId." . $count} = $instance_id;
-			$count++;
-		}
-	}
-	
-	my $xml = $self->_sign(Action  => 'UnmonitorInstances', %args);
-	
-	if ( grep { defined && length } $xml->{Errors} ) {
-		return $self->_parse_errors($xml);
-	}
-	else {
- 		my $monitored_instances;
+# If we have a array ref of instances lets split them out into their InstanceId.n format
+    if ( ref( $args{InstanceId} ) eq 'ARRAY' ) {
+        my $instance_ids = delete $args{InstanceId};
+        my $count        = 1;
+        foreach my $instance_id ( @{$instance_ids} ) {
+            $args{ "InstanceId." . $count } = $instance_id;
+            $count++;
+        }
+    }
 
- 		foreach my $monitored_instance_item (@{$xml->{instancesSet}{item}}) {
- 			my $monitored_instance = Net::Amazon::EC2::ReservedInstance->new(
-				instance_id	=> $monitored_instance_item->{instanceId},
-				state		=> $monitored_instance_item->{monitoring}{state},
- 			);
- 			
- 			push @$monitored_instances, $monitored_instance;
- 		}
- 		
- 		return $monitored_instances;
-	}
+    my $xml = $self->_sign( Action => 'UnmonitorInstances', %args );
+
+    if ( grep { defined && length } $xml->{Errors} ) {
+        return $self->_parse_errors($xml);
+    }
+    else {
+        my $monitored_instances;
+
+        foreach my $monitored_instance_item ( @{ $xml->{instancesSet}{item} } )
+        {
+            my $monitored_instance = Net::Amazon::EC2::ReservedInstance->new(
+                instance_id => $monitored_instance_item->{instanceId},
+                state       => $monitored_instance_item->{monitoring}{state},
+            );
+
+            push @$monitored_instances, $monitored_instance;
+        }
+
+        return $monitored_instances;
+    }
 }
 
 no Moose;

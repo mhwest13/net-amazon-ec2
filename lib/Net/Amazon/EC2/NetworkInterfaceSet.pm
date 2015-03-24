@@ -51,51 +51,51 @@ An array of Net::Amazon::EC2::GroupSet objects which representing security group
 =cut
 
 has 'network_interface_id' => (
-   is       => 'ro',
-   isa      => 'Str',
-   required => 1,
+    is       => 'ro',
+    isa      => 'Str',
+    required => 1,
 );
 
 has 'subnet_id' => (
-   is       => 'ro',
-   isa      => 'Str',
-   required => 0,
+    is       => 'ro',
+    isa      => 'Str',
+    required => 0,
 );
 
 has 'vpc_id' => (
-   is       => 'ro',
-   isa      => 'Str',
-   required => 0,
+    is       => 'ro',
+    isa      => 'Str',
+    required => 0,
 );
 
 has 'description' => (
-   is       => 'ro',
-   isa      => 'Maybe[Str]',
-   required => 0,
+    is       => 'ro',
+    isa      => 'Maybe[Str]',
+    required => 0,
 );
 
 has 'status' => (
-   is       => 'ro',
-   isa      => 'Str',
-   required => 0,
+    is       => 'ro',
+    isa      => 'Str',
+    required => 0,
 );
 
 has 'mac_address' => (
-   is       => 'ro',
-   isa      => 'Str',
-   required => 0,
+    is       => 'ro',
+    isa      => 'Str',
+    required => 0,
 );
 
 has 'private_ip_address' => (
-   is       => 'ro',
-   isa      => 'Str',
-   required => 0,
+    is       => 'ro',
+    isa      => 'Str',
+    required => 0,
 );
 
 has 'group_sets' => (
-   is       => 'ro',
-   isa      => 'Maybe[ArrayRef[Net::Amazon::EC2::GroupSet]]',
-   required => 0,
+    is       => 'ro',
+    isa      => 'Maybe[ArrayRef[Net::Amazon::EC2::GroupSet]]',
+    required => 0,
 );
 
 __PACKAGE__->meta->make_immutable();

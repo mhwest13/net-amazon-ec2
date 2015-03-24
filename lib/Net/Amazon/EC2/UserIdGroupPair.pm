@@ -23,8 +23,8 @@ Name of the security group.
 
 =cut
 
-has 'user_id'       => ( is => 'ro', isa => 'Str', required => 1 );
-has 'group_name'    => ( is => 'ro', isa => 'Maybe[Str]', required => 1 );
+has 'user_id'    => ( is => 'ro', isa => 'Str',        required => 1 );
+has 'group_name' => ( is => 'ro', isa => 'Maybe[Str]', required => 1 );
 
 __PACKAGE__->meta->make_immutable();
 

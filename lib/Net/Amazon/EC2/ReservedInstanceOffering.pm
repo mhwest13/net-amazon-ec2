@@ -45,13 +45,14 @@ The Reserved Instance description.
 
 =cut
 
-has 'reserved_instances_offering_id'	=> ( is => 'ro', isa => 'Str', required => 1 );
-has 'instance_type'						=> ( is => 'ro', isa => 'Str', required => 1 );
-has 'availability_zone'					=> ( is => 'ro', isa => 'Str', required => 1 );
-has 'duration'							=> ( is => 'ro', isa => 'Str', required => 1 );
-has 'usage_price'						=> ( is => 'ro', isa => 'Str', required => 1 );
-has 'fixed_price'						=> ( is => 'ro', isa => 'Str', required => 1 );
-has 'product_description'				=> ( is => 'ro', isa => 'Str', required => 1 );
+has 'reserved_instances_offering_id' =>
+  ( is => 'ro', isa => 'Str', required => 1 );
+has 'instance_type'       => ( is => 'ro', isa => 'Str', required => 1 );
+has 'availability_zone'   => ( is => 'ro', isa => 'Str', required => 1 );
+has 'duration'            => ( is => 'ro', isa => 'Str', required => 1 );
+has 'usage_price'         => ( is => 'ro', isa => 'Str', required => 1 );
+has 'fixed_price'         => ( is => 'ro', isa => 'Str', required => 1 );
+has 'product_description' => ( is => 'ro', isa => 'Str', required => 1 );
 
 __PACKAGE__->meta->make_immutable();
 

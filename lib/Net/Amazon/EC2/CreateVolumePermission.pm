@@ -23,8 +23,8 @@ Group that is allowed to create volumes from the snapshot (currently supports "a
 
 =cut
 
-has 'user_id'       => ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
-has 'group'			=> ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
+has 'user_id' => ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
+has 'group'   => ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
 
 __PACKAGE__->meta->make_immutable();
 

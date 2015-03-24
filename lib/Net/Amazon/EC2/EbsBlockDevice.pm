@@ -30,9 +30,10 @@ Specifies whether the Amazon EBS volume is deleted on instance termination.
 
 =cut
 
-has 'snapshot_id'			=> ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
-has 'volume_size'			=> ( is => 'ro', isa => 'Maybe[Int]', required => 0 );
-has 'delete_on_termination'	=> ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
+has 'snapshot_id' => ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
+has 'volume_size' => ( is => 'ro', isa => 'Maybe[Int]', required => 0 );
+has 'delete_on_termination' =>
+  ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
 
 __PACKAGE__->meta->make_immutable();
 

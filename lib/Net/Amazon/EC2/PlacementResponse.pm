@@ -22,7 +22,7 @@ The availability zone for the instance.
 
 =cut
 
-has 'availability_zone'	=> ( is => 'ro', isa => 'Maybe[Str]', required => 1 );
+has 'availability_zone' => ( is => 'ro', isa => 'Maybe[Str]', required => 1 );
 
 __PACKAGE__->meta->make_immutable();
 

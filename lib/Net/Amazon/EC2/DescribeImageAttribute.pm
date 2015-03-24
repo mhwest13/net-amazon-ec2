@@ -47,27 +47,27 @@ Describes the operating system platform.
 
 =cut
 
-has 'image_id'              => ( is => 'ro', isa => 'Str', required => 1 );
-has 'launch_permissions'    => ( 
-    is          => 'ro', 
-    isa         => 'Maybe[ArrayRef[Net::Amazon::EC2::LaunchPermission]]',
-    predicate   => 'has_launch_permissions',
-    required	=> 0,
+has 'image_id' => ( is => 'ro', isa => 'Str', required => 1 );
+has 'launch_permissions' => (
+    is        => 'ro',
+    isa       => 'Maybe[ArrayRef[Net::Amazon::EC2::LaunchPermission]]',
+    predicate => 'has_launch_permissions',
+    required  => 0,
 );
-has 'product_codes'         => ( 
-    is          => 'ro', 
-    isa         => 'Maybe[ArrayRef[Net::Amazon::EC2::ProductCode]]',
-    predicate   => 'has_product_codes',
-    required	=> 0,
+has 'product_codes' => (
+    is        => 'ro',
+    isa       => 'Maybe[ArrayRef[Net::Amazon::EC2::ProductCode]]',
+    predicate => 'has_product_codes',
+    required  => 0,
 );
-has 'kernel'	=> ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
-has 'ramdisk'	=> ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
-has 'blockDeviceMapping'         => ( 
-    is          => 'ro', 
-    isa         => 'Maybe[ArrayRef[Net::Amazon::EC2::BlockDeviceMapping]]',
-    required	=> 0,
+has 'kernel'  => ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
+has 'ramdisk' => ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
+has 'blockDeviceMapping' => (
+    is       => 'ro',
+    isa      => 'Maybe[ArrayRef[Net::Amazon::EC2::BlockDeviceMapping]]',
+    required => 0,
 );
-has 'platform'	=> ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
+has 'platform' => ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
 
 __PACKAGE__->meta->make_immutable();
 

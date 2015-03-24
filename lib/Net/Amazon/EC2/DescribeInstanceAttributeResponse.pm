@@ -57,18 +57,20 @@ MIME, Base64-encoded user data.
 
 =cut
 
-has 'instance_id'							=> ( is => 'ro', isa => 'Str', required => 1 );
-has 'disable_api_termination'				=> ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
-has 'instance_initiated_shutdown_behavior'	=> ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
-has 'instance_type'							=> ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
-has 'kernel'								=> ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
-has 'ramdisk'								=> ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
-has 'root_device_name'						=> ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
-has 'user_data'								=> ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
-has 'block_device_mapping'					=> ( 
-    is          => 'ro', 
-    isa         => 'Maybe[ArrayRef[Net::Amazon::EC2::BlockDeviceMapping]]',
-    required	=> 0,
+has 'instance_id' => ( is => 'ro', isa => 'Str', required => 1 );
+has 'disable_api_termination' =>
+  ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
+has 'instance_initiated_shutdown_behavior' =>
+  ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
+has 'instance_type'    => ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
+has 'kernel'           => ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
+has 'ramdisk'          => ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
+has 'root_device_name' => ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
+has 'user_data'        => ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
+has 'block_device_mapping' => (
+    is       => 'ro',
+    isa      => 'Maybe[ArrayRef[Net::Amazon::EC2::BlockDeviceMapping]]',
+    required => 0,
 );
 
 __PACKAGE__->meta->make_immutable();

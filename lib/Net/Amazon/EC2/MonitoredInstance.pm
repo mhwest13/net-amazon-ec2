@@ -25,8 +25,8 @@ The state of monitoring of this instance.
 
 =cut
 
-has 'instance_id'	=> ( is => 'ro', isa => 'Str', required => 1 );
-has 'state'			=> ( is => 'ro', isa => 'Str', required => 1 );
+has 'instance_id' => ( is => 'ro', isa => 'Str', required => 1 );
+has 'state'       => ( is => 'ro', isa => 'Str', required => 1 );
 
 __PACKAGE__->meta->make_immutable();
 

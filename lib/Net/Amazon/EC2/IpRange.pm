@@ -21,7 +21,7 @@ CIDR IP Range.
 
 =cut
 
-has 'cidr_ip'  => ( is => 'ro', isa => 'Str' );
+has 'cidr_ip' => ( is => 'ro', isa => 'Str' );
 
 __PACKAGE__->meta->make_immutable();
 

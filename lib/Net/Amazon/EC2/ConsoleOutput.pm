@@ -29,9 +29,9 @@ The console output itself.
 
 =cut
 
-has 'instance_id'   => ( is => 'ro', isa => 'Str', required => 1 );
-has 'timestamp'     => ( is => 'ro', isa => 'Str', required => 1 );
-has 'output'        => ( is => 'ro', isa => 'Str', required => 1 );
+has 'instance_id' => ( is => 'ro', isa => 'Str', required => 1 );
+has 'timestamp'   => ( is => 'ro', isa => 'Str', required => 1 );
+has 'output'      => ( is => 'ro', isa => 'Str', required => 1 );
 
 __PACKAGE__->meta->make_immutable();
 

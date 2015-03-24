@@ -25,8 +25,8 @@ The region service endpoint.
 
 =cut
 
-has 'region_name'		=> ( is => 'ro', isa => 'Str', required => 1 );
-has 'region_endpoint'	=> ( is => 'ro', isa => 'Str', required => 1 );
+has 'region_name'     => ( is => 'ro', isa => 'Str', required => 1 );
+has 'region_endpoint' => ( is => 'ro', isa => 'Str', required => 1 );
 
 __PACKAGE__->meta->make_immutable();
 

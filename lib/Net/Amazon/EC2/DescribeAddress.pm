@@ -25,8 +25,8 @@ The instance id (if any) associated with the public ip.
 
 =cut
 
-has 'public_ip'		=> ( is => 'ro', isa => 'Maybe[Str]', required => 1 );
-has 'instance_id'	=> ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
+has 'public_ip'   => ( is => 'ro', isa => 'Maybe[Str]', required => 1 );
+has 'instance_id' => ( is => 'ro', isa => 'Maybe[Str]', required => 0 );
 
 __PACKAGE__->meta->make_immutable();
 
