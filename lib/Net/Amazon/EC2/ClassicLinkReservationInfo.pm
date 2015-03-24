@@ -31,19 +31,19 @@ An array ref of Net::Amazon::EC2::TagSet objects.
 
 =cut
 
-has 'reservation_id'	=> ( is => 'ro', isa => 'Str', required => 1 );
-has 'vpc_id'			=> ( is => 'ro', isa => 'Str', required => 1 );
-has 'group_set'			=> ( 
-    is			=> 'ro', 
-    isa			=> 'ArrayRef[Net::Amazon::EC2::GroupSet]',
-    required	=> 1,
-    auto_deref	=> 1,
+has 'reservation_id' => ( is => 'ro', isa => 'Str', required => 1 );
+has 'vpc_id'         => ( is => 'ro', isa => 'Str', required => 1 );
+has 'group_set'      => (
+    is         => 'ro',
+    isa        => 'ArrayRef[Net::Amazon::EC2::GroupSet]',
+    required   => 1,
+    auto_deref => 1,
 );
-has 'tag_set'		=> ( 
-    is			=> 'ro',
-    isa			=> 'ArrayRef[Net::Amazon::EC2::TagSet]',
-    required	=> 1,
-    auto_deref	=> 1,
+has 'tag_set' => (
+    is         => 'ro',
+    isa        => 'ArrayRef[Net::Amazon::EC2::TagSet]',
+    required   => 1,
+    auto_deref => 1,
 );
 
 __PACKAGE__->meta->make_immutable();
